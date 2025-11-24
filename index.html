@@ -902,6 +902,7 @@
                 padding: 20px; 
                 margin-top: 0; 
                 top: 50%;
+                /* KRİTİK: Header (60px) + Footer (40px) + Güvenli boşluk (20px) = 120px */
                 max-height: calc(100vh - 120px); 
                 /* KRİTİK: Tamamen opak arka plan, altındaki hiçbir öğeyi göstermemelidir. */
                 background: #0f172a; 
@@ -909,13 +910,15 @@
                 box-sizing: border-box; /* Padding'in genişliği bozmasını önler */
                 z-index: 30; /* İçeriği Stats Bar'dan ve Footer'dan ÖNE AL */
             }
+            
+            /* KRİTİK DÜZELTME: Küçülme sorununu çözmek için tüm transform'ları scale(1) ile başlattık ve transition'ı kısalttık */
             #globe-section.mode-services .services-layer,
             #globe-section.mode-contact .contact-layer,
             #globe-section.mode-about .about-layer,
             #globe-section.mode-terms .terms-layer, 
             #globe-section.mode-privacy .privacy-layer, 
             #globe-section.mode-accessibility .accessibility-layer { 
-                transform: translateY(-50%) translateX(0) !important; 
+                transform: translateY(-50%) translateX(0) scale(1) !important; 
             }
             
             /* Hizmetler Grid'i Tek Sütun */
