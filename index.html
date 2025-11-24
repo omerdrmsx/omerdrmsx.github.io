@@ -1,108 +1,2432 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Ömer Faruk Durmuş | Portfolio</title>
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap');
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-key="page_title">Vesmar Ship Supply - Interactive Globe</title>
+    
+    <!-- Font Ailesi: Modern ve temiz bir görünüm için Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700;900&display=swap" rel="stylesheet">
 
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-      font-family: 'Poppins', sans-serif;
-    }
+    <!-- 3D Küre için Three.js kütüphanesi -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
-    body {
-      background: linear-gradient(135deg, #141e30, #243b55);
-      color: #fff;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      text-align: center;
-    }
+    <style>
+        /* CSS SIFIRLAMA */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        /* Ana tasarım ve karanlık tema */
+        body { 
+            background: #000; 
+            font-family: 'Inter', sans-serif; /* Ana font */
+            overflow: hidden; /* Dikey kaydırmayı engelle */
+        }
 
-    .container {
-      max-width: 700px;
-      padding: 30px;
-      background: rgba(255, 255, 255, 0.08);
-      border-radius: 20px;
-      backdrop-filter: blur(10px);
-      box-shadow: 0 0 20px rgba(0,0,0,0.3);
-      animation: fadeIn 1.5s ease-in-out;
-    }
+        /* Form ve buton elemanlarında fontu garanti et */
+        input, textarea, button {
+            font-family: 'Inter', sans-serif';
+        }
 
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(30px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
+        /* Ana Bölüm ve Zemin Efekti */
+        #globe-section {
+            position: relative;
+            width: 100%;
+            height: 100vh;
+            min-height: 700px;
+            /* Yıldıza benzer radyal gradyan arka plan */
+            background: radial-gradient(circle at center, #0f172a 0%, #000000 100%);
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: text !important;
+            -webkit-user-select: text !important;
+        }
 
-    h1 {
-      font-size: 2.2em;
-      margin-bottom: 10px;
-      color: #00d9ff;
-    }
+        /* 3D Küre (Three.js Canvas) Konteyneri */
+        #canvas-container {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 1;
+            cursor: grab; /* Kullanıcının küreyi döndürebileceğini belirtir */
+            opacity: 0;
+            transform: translateX(40vw) scale(0.7) rotateY(-30deg);
+            transform-origin: center center;
+            /* İlk yüklemedeki açılış animasyonu (Fade-in ve konuma gelme) */
+            transition: opacity 2s ease-out, transform 2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        
+        /* Sayfa açılış animasyon durumu */
+        #globe-section.animate-in #canvas-container {
+            opacity: 1;
+            transform: translateX(0) scale(1) rotateY(0deg);
+        }
+        /* HİZMETLER/BİZ KİMİZ/ŞARTLAR (Sağ Panel) Modu */
+        #globe-section.mode-services #canvas-container,
+        #globe-section.mode-about #canvas-container,
+        #globe-section.mode-terms #canvas-container,
+        #globe-section.mode-accessibility #canvas-container {
+            transform: translateX(-30%) scale(0.85); /* Sola kaydır ve küçült */
+            transition: transform 1.2s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        /* İLETİŞİM/MAHREMİYET (Sol Panel) Modu */
+        #globe-section.mode-contact #canvas-container,
+        #globe-section.mode-privacy #canvas-container {
+            transform: translateX(30%) scale(0.85); /* Sağa kaydır ve küçült */
+            opacity: 0.4; /* Opaklık düşürülerek arka planda kalması sağlanır */
+            transition: transform 1.2s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.8s;
+        }
 
-    h2 {
-      font-weight: 300;
-      color: #ccc;
-      margin-bottom: 20px;
-    }
 
-    p {
-      font-size: 1em;
-      line-height: 1.6;
-      color: #ddd;
-      margin-bottom: 25px;
-    }
+        #canvas-container:active { cursor: grabbing; }
 
-    .buttons a {
-      text-decoration: none;
-      color: #fff;
-      background: #00d9ff;
-      padding: 10px 20px;
-      margin: 5px;
-      border-radius: 30px;
-      transition: 0.3s;
-      font-weight: 500;
-    }
+        /* Arayüz Katmanları (Kürenin Üzerindeki Tüm İçerik) */
+        .ui-container {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 10; pointer-events: none; /* Varsayılan olarak tıklamayı engelle */
+        }
 
-    .buttons a:hover {
-      background: #00a0cc;
-      transform: scale(1.05);
-    }
+        /* Tüm İçerik Katmanlarının Ortak Konumu */
+        .content-layer {
+            position: absolute; top: 50%; transform: translateY(-50%);
+            width: 100%; max-width: 1400px; left: 0; right: 0; margin: 0 auto;
+            text-align: center; transition: all 1s cubic-bezier(0.22, 1, 0.36, 1);
+            padding: 0 20px;
+        }
 
-    footer {
-      margin-top: 20px;
-      font-size: 0.9em;
-      color: #aaa;
-    }
+        /* Giriş (Intro/Hero) Katmanı Stilleri */
+        .intro-layer { 
+            opacity: 0; 
+            pointer-events: auto; 
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        
+        /* DÜZELTME: Giriş katmanını sadece animate-in modunda görünür yap */
+        #globe-section.animate-in .intro-layer { opacity: 1; }
+        
+        /* KRİTİK DÜZELTME: Masaüstü/Mobil - Başka bir moda geçildiğinde Intro'yu tamamen gizle ve sola kaydır */
+        #globe-section.mode-services .intro-layer,
+        #globe-section.mode-contact .intro-layer,
+        #globe-section.mode-about .intro-layer,
+        #globe-section.mode-terms .intro-layer,
+        #globe-section.mode-privacy .intro-layer,
+        #globe-section.mode-accessibility .intro-layer {
+            opacity: 0; 
+            transform: translateY(-50%) translateX(-100px); 
+            pointer-events: none;
+        }
+        /* Masaüstü: Başka bir moda geçildiğinde Intro'yu gizle ve sola kaydır (yedek kural) */
+        /* Bu kural aslında yukarıdaki kuralı overwrite etmeli ama netlik için bıraktım */
+        #globe-section:not(.mode-intro) .intro-layer { 
+             /* opacity 0 olarak kalmalı */
+        }
 
-    @media (max-width: 600px) {
-      h1 { font-size: 1.8em; }
-      p { font-size: 0.9em; }
-    }
-  </style>
+
+        /* SAĞ TARAFTA AÇILAN PANEL STİLLERİ (Hizmetler, Biz Kimiz vb.) */
+        .services-layer, .about-layer, .terms-layer, .accessibility-layer {
+            opacity: 0; 
+            transform: translateY(-45%) translateX(100px); /* Başlangıçta sağa kaymış */
+            text-align: left;
+            left: 40%; /* Masaüstünde sağda başlar */
+            width: 55%;
+            padding: 30px 20px;
+            pointer-events: none;
+            transition: all 1s cubic-bezier(0.22, 1, 0.36, 1);
+            background: rgba(0,0,0,0.2); /* Hafif şeffaf arka plan */
+            border-radius: 8px;
+            overflow-y: auto; 
+            max-height: 85vh; /* Dikeyde kaydırılabilir alan */
+            z-index: 20; /* İçeriği öne getir */
+        }
+        /* Sağ Panellerin Aktif Durumu */
+        #globe-section.mode-services .services-layer,
+        #globe-section.mode-about .about-layer,
+        #globe-section.mode-terms .terms-layer,
+        #globe-section.mode-accessibility .accessibility-layer {
+            opacity: 1; 
+            transform: translateY(-45%) translateX(0); /* Ekran içine kaydır */
+            pointer-events: auto;
+        }
+
+        /* LEFT SIDE LAYERS (Contact, Privacy) */
+        .contact-layer, .privacy-layer {
+            opacity: 0; 
+            transform: translateY(-50%) translateX(-100px); /* Başlangıçta sola kaymış */
+            text-align: left;
+            left: 5%; 
+            width: 40%;
+            padding: 30px 20px;
+            pointer-events: none;
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+            transition: all 1s cubic-bezier(0.22, 1, 0.36, 1);
+            margin-top: 80px; 
+            top: 40%; /* Dikeyde yukarı konumlandırma */
+            transform: translateY(-50%) translateX(-100px);
+            max-height: 85vh; 
+            overflow-y: auto;
+            z-index: 20; /* İçeriği öne getir */
+        }
+        
+        /* İletişim Formunun Aktif Durumu (Daha geniş) */
+        #globe-section.mode-contact .contact-layer {
+            opacity: 1; 
+            transform: translateY(-50%) translateX(0); 
+            pointer-events: auto;
+            width: 70%; 
+            left: 5%;
+            background: none; /* Grid yapısını kullanmak için arka planı kaldır */
+            padding: 0 20px; 
+        }
+
+         /* Gizlilik Panelinin Aktif Durumu (Normal genişlik) */
+        #globe-section.mode-privacy .privacy-layer {
+            opacity: 1; 
+            transform: translateY(-50%) translateX(0); 
+            pointer-events: auto;
+        }
+        
+        /* LOGO VE NAVİGASYON ÇUBUĞU */
+        #logo-header-bar {
+            position: fixed;
+            top: 0; left: 0; right: 0; height: 80px;
+            z-index: 50; 
+            display: flex; align-items: center;
+            padding: 0 40px;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+            pointer-events: auto;
+            justify-content: space-between; 
+            width: 100%; box-sizing: border-box;
+            border-bottom: 1px solid rgba(56, 189, 248, 0.1);
+        }
+        
+        /* HAMBURGER MENÜ BUTONU (Mobil için Gizli) */
+        #menu-toggle {
+            display: none; /* Varsayılan olarak gizli */
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 10px;
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 100;
+        }
+
+        #menu-toggle svg {
+            width: 24px;
+            height: 24px;
+            color: #fff;
+            transition: color 0.3s;
+        }
+        
+        #menu-toggle:hover svg {
+            color: #38bdf8;
+        }
+
+
+        #logo-header-bar .logo-wrapper {
+            display: flex; align-items: center; gap: 15px;
+            pointer-events: auto; cursor: pointer; text-decoration: none; color: inherit;
+        }
+
+        #main-logo {
+            height: 50px; 
+            width: auto;
+            filter: drop-shadow(0 0 5px rgba(56, 189, 248, 0.4));
+            transition: filter 0.3s;
+        }
+
+        /* NAVIGATION STYLES */
+        #main-nav {
+            margin-right: auto; 
+            margin-left: 50px; 
+        }
+        #main-nav a {
+            color: #fff; text-decoration: none; text-transform: uppercase;
+            font-size: 0.95rem; font-weight: 600; padding: 10px 15px; margin: 0 5px;
+            transition: color 0.3s, border-bottom 0.3s;
+            border-bottom: 2px solid transparent;
+        }
+        #main-nav a:hover,
+        #main-nav a.active-link { /* Aktif link stili */
+            color: #38bdf8;
+            border-bottom: 2px solid #38bdf8;
+        }
+
+        /* MOBİL NAVİGASYON MENÜSÜ */
+        #mobile-nav-menu {
+            position: fixed;
+            top: 60px; /* Mobil header yüksekliği 60px'e çekildi */
+            left: 0;
+            width: 100%;
+            height: calc(100% - 60px);
+            background: rgba(15, 23, 42, 0.98);
+            z-index: 45; /* Header'ın altında kalmalı */
+            transform: translateX(-100%); /* Başlangıçta gizli */
+            transition: transform 0.3s ease-in-out;
+            padding: 20px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto; /* Mobilde menü içeriği uzunsa kaydırılabilir olmalı */
+        }
+
+        #mobile-nav-menu.open {
+            transform: translateX(0);
+        }
+
+        #mobile-nav-menu a {
+            color: #fff;
+            text-decoration: none;
+            font-size: 1.5rem;
+            font-weight: 700;
+            padding: 15px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            transition: color 0.3s;
+            text-align: left;
+        }
+
+        #mobile-nav-menu a:hover,
+        #mobile-nav-menu a.active-link {
+            color: #38bdf8;
+        }
+
+        /* Dil Seçici Butonları */
+        #language-selector {
+            position: static; 
+            z-index: 1; 
+            display: flex; gap: 10px;
+            pointer-events: auto;
+        }
+        #language-selector button {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: #fff; padding: 8px 15px; border-radius: 4px;
+            font-size: 0.9rem; cursor: pointer; transition: all 0.3s;
+        }
+        #language-selector button.active,
+        #language-selector button:hover {
+            background: #38bdf8; color: #000; border-color: #38bdf8;
+        }
+
+        /* Port Tooltip */
+        .port-tooltip {
+            position: absolute;
+            background: rgba(56, 189, 248, 0.95);
+            color: #000; padding: 6px 12px; border-radius: 4px;
+            font-size: 0.8rem; font-weight: 700; letter-spacing: 0.5px;
+            text-transform: uppercase; white-space: nowrap;
+            opacity: 0; pointer-events: none;
+            transform: translate(-50%, -10px);
+            z-index: 100;
+            box-shadow: 0 0 15px rgba(56, 189, 248, 0.5);
+        }
+        .port-tooltip.visible {
+            opacity: 1;
+            transform: translate(-50%, -30px);
+        }
+
+        /* Scroll Indicator */
+        .scroll-indicator {
+            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+            display: flex; flex-direction: column; align-items: center;
+            opacity: 0.7; transition: opacity 0.5s; z-index: 20; pointer-events: none;
+        }
+        .mouse-icon {
+            width: 26px; height: 42px; border: 2px solid rgba(255,255,255,0.6);
+            border-radius: 20px; position: relative;
+        }
+        .wheel {
+            width: 4px; height: 8px; background: #fff; border-radius: 2px;
+            position: absolute; top: 6px; left: 50%; transform: translateX(-50%);
+            animation: scrollWheel 2s infinite;
+        }
+        .scroll-text {
+            margin-top: 8px; font-size: 0.75rem; letter-spacing: 2px; 
+            text-transform: uppercase; color: rgba(255,255,255,0.6);
+        }
+        @keyframes scrollWheel {
+            0% { top: 6px; opacity: 1; }
+            100% { top: 24px; opacity: 0; }
+        }
+        
+        /* Modlarda Scroll Indicator'ü gizle */
+        #globe-section.mode-services .scroll-indicator,
+        #globe-section.mode-contact .scroll-indicator,
+        #globe-section.mode-about .scroll-indicator,
+        #globe-section.mode-terms .scroll-indicator,
+        #globe-section.mode-privacy .scroll-indicator,
+        #globe-section.mode-accessibility .scroll-indicator { opacity: 0; }
+
+        /* Stats Bar (Masaüstü Konum) */
+        .stats-bar {
+            position: absolute; 
+            bottom: 120px; 
+            left: 40px;
+            display: flex; gap: 40px;
+            z-index: 15; pointer-events: none; 
+        }
+        .stat-item {
+            text-align: left; border-left: 2px solid #38bdf8; padding-left: 15px;
+            backdrop-filter: blur(4px);
+        }
+        .stat-value {
+            display: block; font-size: 1.5rem; font-weight: 800; color: #fff; line-height: 1;
+        }
+        .stat-label {
+            font-size: 0.8rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px;
+            margin-top: 5px; display: block;
+        }
+        /* Tüm modlarda Stats Bar'ı gizle (Sadece Intro'da görünür) */
+        #globe-section.mode-services .stats-bar,
+        #globe-section.mode-contact .stats-bar,
+        #globe-section.mode-about .stats-bar,
+        #globe-section.mode-terms .stats-bar,
+        #globe-section.mode-privacy .stats-bar,
+        #globe-section.mode-accessibility .stats-bar { opacity: 0; pointer-events: none; transition: 0.5s; }
+
+        /* Navigation Dots */
+        .slide-nav {
+            position: absolute; right: 40px; top: 50%; transform: translateY(-50%);
+            display: flex; flex-direction: column; gap: 20px; z-index: 20;
+        }
+        .nav-dot {
+            width: 10px; height: 10px; border-radius: 50%;
+            background: rgba(255,255,255,0.2); cursor: pointer;
+            transition: all 0.3s; border: 1px solid transparent;
+        }
+        .nav-dot.active {
+            background: #38bdf8; box-shadow: 0 0 10px #38bdf8;
+        }
+        .nav-dot:hover { border-color: #38bdf8; }
+
+        /* Typography and Elements */
+        .brand-badge {
+            display: inline-block; margin-bottom: 25px; padding: 8px 20px;
+            background: rgba(14, 165, 233, 0.1); border: 1px solid rgba(56, 189, 248, 0.3);
+            border-radius: 4px; color: #38bdf8; font-family: monospace; font-size: 0.85rem;
+            font-weight: bold; letter-spacing: 3px; text-transform: uppercase;
+        }
+
+        .globe-title {
+            font-size: 5rem; font-weight: 900; text-transform: uppercase;
+            letter-spacing: 2px; margin-bottom: 20px; line-height: 1; color: #ffffff;
+            text-shadow: 0 0 30px rgba(0,0,0,0.5);
+        }
+
+        .highlight-text {
+            background: linear-gradient(to right, #38bdf8, #3b82f6);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+
+        .globe-subtitle {
+            font-size: 1.3rem; color: #94a3b8; max-width: 700px; margin: 0 auto 40px auto; line-height: 1.6;
+        }
+        /* KRİTİK DÜZELTME 1: Masaüstü genelindeki max-width'i kaldıralım. Bu, başlık ve alt yazıların genişlemesini engelliyordu. */
+        @media (min-width: 769px) {
+            .globe-subtitle {
+                max-width: 100%; /* Masaüstünde de genişlesin */
+            }
+        }
+
+
+        .services-title {
+            font-size: 3.8rem; font-weight: 800; color: #fff; margin-bottom: 10px; line-height: 1; text-transform: uppercase;
+        }
+        
+        .services-desc {
+            font-size: 1.15rem; color: #cbd5e1; margin-bottom: 25px; 
+            max-width: 100%;
+            /* Mobil görünümde kısıtlamayı kaldıracağız. */
+        }
+        
+        /* İletişim Grid Yapısı */
+        .contact-grid-wrapper {
+            display: grid;
+            grid-template-columns: 1fr 1fr; /* İki eşit sütun */
+            gap: 20px;
+            margin-top: 30px;
+        }
+        
+        /* Sol Kutucuk: İletişim Bilgileri */
+        .contact-info-box {
+            background: rgba(15, 23, 42, 0.8);
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid rgba(56, 189, 248, 0.2);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        /* Contact Layer styles */
+        .contact-layer {
+            background: none; 
+            padding: 0 20px; 
+        }
+
+        /* ORTAKLAR: İletişim kartı (Masaüstü için) */
+        .contact-layer .contact-info div {
+            margin-bottom: 15px; 
+            border-radius: 4px;
+            background: rgba(255,255,255,0.05);
+            border-left: 3px solid #38bdf8;
+            width: 100%; 
+            display: flex;
+            align-items: center;
+            overflow: hidden; 
+            transition: background 0.3s;
+        }
+        
+        .contact-layer .contact-info .deactivated-card {
+            cursor: default;
+        }
+
+        .contact-layer .contact-info div a,
+        .contact-layer .contact-info div span:first-child { /* Deactivated card content wrapper */
+            color: inherit;
+            text-decoration: none;
+            display: flex; 
+            align-items: center;
+            gap: 15px; 
+            width: 100%;
+            cursor: pointer;
+            padding: 12px; 
+        }
+        /* Make sure deactivated card span doesn't have pointer cursor */
+        .contact-layer .contact-info .deactivated-card span:first-child {
+            cursor: default;
+        }
+
+
+        .contact-layer .contact-info div a:hover {
+            background: rgba(56, 189, 248, 0.1);
+        }
+        .contact-layer .contact-info .deactivated-card:hover {
+            background: rgba(255,255,255,0.05);
+        }
+
+        .contact-layer .contact-info svg {
+            width: 20px; 
+            height: 20px;
+            color: #38bdf8;
+            flex-shrink: 0;
+        }
+        .contact-layer .contact-info .info-text {
+            display: flex;
+            flex-direction: column;
+            text-align: left;
+            user-select: text; 
+        }
+        .contact-layer .contact-info strong {
+            display: block;
+            color: #fff;
+            font-size: 1rem; 
+            margin-bottom: 3px;
+        }
+        .contact-layer .contact-info span {
+            color: #94a3b8;
+            font-size: 0.85rem; 
+        }
+
+        /* Formun sağ kutucuk stili */
+        .contact-layer .contact-form {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            background: rgba(15, 23, 42, 0.8); /* Aynı arka plan rengi */
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid rgba(56, 189, 248, 0.2);
+            margin-top: 0; /* Grid ile boşluk yönetimi */
+        }
+        
+        /* Formun ilk 2 alanını yatay ikiye bölme */
+        .contact-layer .contact-form .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .contact-layer .contact-form input,
+        .contact-layer .contact-form textarea {
+            padding: 10px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 4px;
+            color: #fff;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        .contact-layer .contact-form input:focus,
+        .contact-layer .contact-form textarea:focus {
+            border-color: #38bdf8;
+        }
+        .contact-layer .contact-form textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        /* Service Accordion Styles */
+        .service-grid {
+            display: grid; grid-template-columns: 1fr 1fr; 
+            gap: 25px; 
+            margin-bottom: 15px;
+            max-width: 100%;
+        }
+
+        .service-item-container {
+            grid-column: span 1;
+        }
+
+        .service-item {
+            cursor: pointer;
+            background: rgba(255,255,255,0.05); 
+            padding: 20px; 
+            border-left: 4px solid #38bdf8;
+            color: #fff; 
+            font-weight: bold; 
+            font-size: 1rem; 
+            letter-spacing: 1px; 
+            transition: all 0.3s;
+            position: relative;
+            z-index: 2; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .service-item:hover { 
+            background: rgba(56, 189, 248, 0.1); 
+            transform: translateX(2px); 
+        }
+        .service-item.active {
+            border-color: #ffffff; 
+            background: rgba(56, 189, 248, 0.2);
+        }
+        .service-item svg {
+            width: 24px;
+            height: 24px;
+            transition: transform 0.3s;
+        }
+        .service-item.active svg {
+            transform: rotate(180deg);
+        }
+        
+        .service-details {
+            background: rgba(0,0,0,0.5);
+            color: #cbd5e1;
+            padding: 0 20px;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            max-height: 0; 
+            overflow: hidden;
+            transition: max-height 0.5s ease-in-out, padding 0.5s ease-in-out;
+            font-weight: 300;
+        }
+        .service-item-container.active .service-details {
+            max-height: 300px; 
+            padding: 20px;
+        }
+
+        /* Resim Galerisi Stilleri */
+        .services-gallery {
+            display: flex;
+            gap: 15px; 
+            margin-top: 20px;
+            justify-content: start;
+            max-height: 160px; 
+            overflow: hidden; 
+        }
+        .services-gallery img {
+            width: 50%;
+            height: 160px;
+            object-fit: cover;
+            border-radius: 4px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            border: 2px solid rgba(56, 189, 248, 0.3);
+            transition: transform 0.3s;
+            filter: brightness(0.85); 
+        }
+        .services-gallery img:hover {
+            transform: scale(1.02);
+            border-color: #38bdf8;
+            filter: brightness(1);
+        }
+
+        /* Button Styles */
+        .hero-btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+            padding: 18px 45px; font-size: 1.1rem; font-weight: 700; color: #000;
+            background: #38bdf8; border-radius: 2px; text-decoration: none;
+            text-transform: uppercase; letter-spacing: 1px; transition: all 0.3s ease;
+            box-shadow: 0 0 20px rgba(56, 189, 248, 0.4); cursor: pointer; border: none;
+        }
+        .hero-btn:hover {
+            background: #ffffff; box-shadow: 0 0 40px rgba(255, 255, 255, 0.6); transform: translateY(-2px);
+        }
+        .hero-btn svg { width: 20px; height: 20px; stroke-width: 2.5; }
+
+        .back-btn {
+            background: transparent; border: 1px solid rgba(255,255,255,0.3); color: #fff;
+            padding: 16px 35px; font-size: 1rem; 
+        }
+        .back-btn:hover { background: rgba(255,255,255,0.1); color: #fff; box-shadow: none; }
+
+        /* Success Modal Styles */
+        #success-modal {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        #success-modal.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        #success-modal .modal-content {
+            background: #0f172a;
+            padding: 40px;
+            border-radius: 8px;
+            text-align: center;
+            max-width: 400px;
+            transform: scale(0.9);
+            transition: transform 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+            border: 2px solid #38bdf8;
+            box-shadow: 0 0 40px rgba(56, 189, 248, 0.4);
+        }
+        #success-modal.visible .modal-content {
+            transform: scale(1);
+        }
+        #success-modal .modal-icon {
+            color: #38bdf8;
+            width: 60px;
+            height: 60px;
+            margin-bottom: 20px;
+        }
+        #success-modal h3 {
+            color: #fff;
+            font-size: 1.8rem;
+            margin-bottom: 10px;
+        }
+        #success-modal p {
+            color: #94a3b8;
+            margin-bottom: 30px;
+        }
+        #success-modal button {
+            background: #38bdf8;
+            color: #000;
+            padding: 10px 25px;
+            border: none;
+            border-radius: 2px;
+            cursor: pointer;
+            font-weight: 700;
+            transition: background 0.3s;
+        }
+        #success-modal button:hover {
+            background: #fff;
+        }
+        
+        /* FOOTER (YENİ EKLENEN KISIM) */
+        #main-footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 10px 40px;
+            background: rgba(15, 23, 42, 0.9);
+            backdrop-filter: blur(4px);
+            z-index: 50;
+            color: #94a3b8;
+            font-size: 0.8rem;
+            text-align: center;
+            border-top: 1px solid rgba(56, 189, 248, 0.1);
+        }
+        #main-footer .footer-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+        #main-footer .footer-links a {
+            color: #38bdf8;
+            text-decoration: none;
+            margin: 0 10px;
+            transition: color 0.3s;
+        }
+        #main-footer .footer-links a:hover {
+            color: #fff;
+            text-decoration: underline;
+        }
+
+        /* Instagram Ikon Stili */
+        .instagram-icon {
+            width: 20px;
+            height: 20px;
+            stroke-width: 2;
+            color: #38bdf8;
+            transition: color 0.3s;
+            vertical-align: middle; /* Metinle aynı hizaya getirmek için */
+            margin-top: -3px; /* İnce ayar */
+        }
+        .instagram-icon:hover {
+             color: #fff;
+        }
+
+
+        /* Responsive Design */
+        @media (max-width: 1024px) {
+            /* Orta ekranlar için panellerin genişlik ayarı */
+            .contact-layer, .privacy-layer { width: 50%; left: 3%; } 
+            .services-layer, .about-layer, .terms-layer, .accessibility-layer { left: 45%; width: 50%; } 
+            
+            #globe-section.mode-contact .contact-layer {
+                width: 70%; 
+            }
+        }
+
+        @media (max-width: 768px) {
+            /* GLOBE/CANVAS AYARLARI */
+            #globe-section.mode-services #canvas-container,
+            #globe-section.mode-contact #canvas-container,
+            #globe-section.mode-about #canvas-container,
+            #globe-section.mode-terms #canvas-container,
+            #globe-section.mode-privacy #canvas-container,
+            #globe-section.mode-accessibility #canvas-container {
+                transform: scale(0.6) translateY(-20%) !important; opacity: 0.4;
+            }
+            
+            /* GENEL MOBİL AYARLAR */
+            
+            /* Başlık Font Boyutları Optimizasyonu */
+            .globe-title { font-size: 2.8rem; margin-top: 50px; } 
+            .services-title { font-size: 2.2rem; }
+            .globe-subtitle { font-size: 1rem; }
+            
+            .hero-btn { padding: 15px 30px; font-size: 1rem; }
+            .back-btn { padding: 13px 25px; font-size: 0.9rem; }
+
+            #logo-header-bar {
+                padding: 0 20px; 
+                height: 60px; /* Mobil Header Yüksekliği */
+                /* Logo ve Hamburger menünün sola hizalanması */
+                justify-content: flex-start; 
+                gap: 15px;
+            }
+            
+            /* GÖREV 1: Hamburger butonu mobil görünüme eklendi */
+            #menu-toggle {
+                display: block; 
+                position: static; 
+                transform: none;
+                margin-right: 10px;
+            }
+            
+            /* GÖREV 2: Logoyu sola kaydır ve ortala */
+            #logo-header-bar .logo-wrapper {
+                 /* Logo ve VESMAR yazısını ortalamak için */
+                 margin-left: 0;
+            }
+            
+            #main-logo { height: 30px; }
+            
+            /* Masaüstü navigasyonunu mobil görünümde gizle */
+            #main-nav { display: none; } 
+            
+            #language-selector { gap: 5px; margin-left: auto; } /* Dil seçiciyi sağa it */
+            #language-selector button { padding: 5px 10px; }
+            
+            /* Yan Navigasyonu Gizle (Hamburger menü kullanıldığı için) */
+            .slide-nav { display: none; } 
+            
+            /* İstatistik çubuğu mobil ayarlaması (Ortalama ve yatay yayılma) */
+            .stats-bar { 
+                bottom: 80px; 
+                left: 50%; 
+                transform: translateX(-50%); /* Ortala */
+                gap: 15px; 
+                padding: 0 20px;
+                width: 100%;
+                justify-content: space-between; 
+                border-left: none; 
+            }
+            .stats-bar .stat-item {
+                border-left: none; 
+                padding-left: 0;
+                text-align: center;
+                flex-grow: 1;
+            }
+            .stats-bar .stat-item:not(:last-child) {
+                 border-right: 1px solid rgba(56, 189, 248, 0.1); 
+            }
+            
+
+            /* Mobile Layer Positioning (Full width, centered) */
+            .content-layer {
+                /* Bu, panellerin kenar boşluklarını yöneten dış kapsayıcıdır. */
+                padding: 0; /* Dış padding'i kaldırarak iç öğelere tam kontrol veriyorum */
+                transform: translateY(-50%) !important;
+            }
+            
+            /* Tüm içerik katmanları için mobil ayarlamalar */
+            .services-layer,
+            .contact-layer,
+            .about-layer,
+            .terms-layer, 
+            .privacy-layer, 
+            .accessibility-layer { 
+                width: 100%; 
+                left: 0;
+                /* İç padding'i artırarak kenarlardan içeri itiyorum */
+                padding: 20px; 
+                margin-top: 0; 
+                top: 50%;
+                max-height: calc(100vh - 120px); 
+                background: rgba(15, 23, 42, 0.95); 
+                border-radius: 8px;
+                box-sizing: border-box; /* Padding'in genişliği bozmasını önler */
+            }
+            #globe-section.mode-services .services-layer,
+            #globe-section.mode-contact .contact-layer,
+            #globe-section.mode-about .about-layer,
+            #globe-section.mode-terms .terms-layer, 
+            #globe-section.mode-privacy .privacy-layer, 
+            #globe-section.mode-accessibility .accessibility-layer { 
+                transform: translateY(-50%) translateX(0) !important; 
+            }
+            
+            /* Hizmetler Grid'i Tek Sütun */
+            .service-grid {
+                 grid-template-columns: 1fr; /* Alt alta tek sütun */
+                 gap: 15px; /* Boşluğu azalt */
+            }
+            .service-item-container {
+                grid-column: span 1;
+            }
+            
+            /* İletişim Formu ve Bilgi Kutularının YENİ MOBİL TASARIMI */
+            .contact-layer .contact-grid-wrapper {
+                grid-template-columns: 1fr; /* Alt alta dizilir */
+                max-width: none !important; 
+                width: 100% !important;
+                margin: 0; 
+                gap: 15px; 
+            }
+            
+            /* ---------------------------------------------------- */
+            /* İLETİŞİM KANALLARI KUTUCUKLARI (YENİ TASARIM) */
+            /* ---------------------------------------------------- */
+            .contact-info-box {
+                background: none !important; /* Arka planı kaldır */
+                border: none !important; /* Çerçeveyi kaldır */
+                padding: 0;
+                gap: 10px;
+            }
+            
+            .contact-layer .contact-info div {
+                 /* Eski kart stili: Mobil için tam geniş, buton stili (Daha havalı hale getirildi) */
+                 margin-bottom: 0; 
+                 border-radius: 6px; /* Hafif yuvarlatılmış köşeler */
+                 background: rgba(15, 23, 42, 0.9); /* Koyu Arka Plan */
+                 border: 1px solid rgba(56, 189, 248, 0.4); /* Mavi çerçeve */
+                 border-left: 5px solid #38bdf8; /* Belirgin mavi çizgi */
+                 width: 100% !important; 
+                 box-shadow: 0 4px 10px rgba(0,0,0,0.5); /* Hafif gölge */
+                 
+                 /* KRİTİK DÜZELTME: Kapsayıcıyı esnek yapıyı zorla */
+                 display: flex !important;
+                 align-items: center;
+            }
+
+            /* KRİTİK DÜZELTME: İç metin alanına esneklik kazandırarak sağa yayılmasını zorla */
+            .contact-layer .contact-info .info-text {
+                 display: flex;
+                 flex-direction: column;
+                 text-align: left;
+                 user-select: text; 
+                 flex-grow: 1; /* Metin bloğunun kalan alanı doldurmasını sağla */
+            }
+            
+            .contact-layer .contact-info strong {
+                 font-size: 1.1rem; 
+                 color: #fff; /* Başlıkları beyaz yap */
+            }
+            
+            .contact-layer .contact-info span {
+                 font-size: 0.95rem; 
+                 line-height: 1.3;
+                 color: #cbd5e1; /* Açıklama metnini açık gri yap */
+                 word-break: break-word; /* Uzun URL'lerin taşmasını engelle */
+            }
+            
+            /* Inputların Genişlik ve Boşluk Ayarları */
+            .contact-layer .contact-form input,
+            .contact-layer .contact-form textarea {
+                padding: 12px; /* Daha kolay tıklama */
+                margin-bottom: 0; 
+                width: 100%;
+            }
+            .contact-layer .contact-form {
+                 gap: 10px; 
+                 padding: 20px;
+            }
+            .contact-layer .contact-form .form-grid {
+                gap: 10px;
+                grid-template-columns: 1fr; /* Tek sütun */
+            }
+            
+            /* ---------------------------------------------------- */
+            /* MAHREMİYET KUTUCUKLARI (YENİ TASARIM) */
+            /* ---------------------------------------------------- */
+            .privacy-layer { 
+                padding: 20px; 
+                max-width: none !important; 
+                width: 100% !important;
+                margin: 0; 
+            }
+            
+            .privacy-layer .contact-info {
+                display: flex;
+                flex-direction: column;
+                gap: 20px; /* Yeni bölümler arası boşluk */
+                margin-bottom: 0;
+            }
+            
+            /* Mahremiyet Kartlarını Dikey Bloklara Çevir */
+            .privacy-section { /* Yeni eklenen div'e stil ver */
+                 border-left: 3px solid #38bdf8;
+                 padding-left: 10px;
+            }
+            
+            /* Mahremiyet Başlıklarının Rengini Beyaz Yap */
+            .privacy-layer .contact-info strong {
+                 font-size: 1.3rem !important; 
+                 margin-bottom: 5px;
+                 color: #fff !important; /* Başlıkları BEYAZ yap */
+                 display: block;
+            }
+            /* Mahremiyet İçerik Metinlerinin Rengini Beyaz Yap */
+             .privacy-layer .contact-info p {
+                 font-size: 1rem !important; 
+                 line-height: 1.5; 
+                 color: #cbd5e1 !important; /* Açık gri yap, daha okunaklı */
+                 display: block;
+                 max-width: none !important; 
+                 width: 100% !important;
+                 margin-top: 5px;
+            }
+            /* Mahremiyet Sayfası Genel Başlık Metinlerini de Genişlet */
+            .privacy-layer .services-desc {
+                margin-bottom: 15px; 
+                max-width: none !important; 
+                width: 100% !important;
+            }
+            
+            /* Genel İçerik Kutularının Genişlik Garantisi */
+            .contact-layer .contact-info-box,
+            .contact-layer .contact-form,
+            .privacy-layer { 
+                max-width: 100% !important; 
+                width: 100% !important; 
+                margin-left: 0;
+                margin-right: 0;
+                box-sizing: border-box; 
+            }
+            
+            #main-footer {
+                padding: 10px 20px;
+                font-size: 0.7rem; 
+            }
+            
+            /* Footer linkleri arasına daha az boşluk bırak */
+            #main-footer .footer-links a {
+                margin: 0 5px;
+            }
+        }
+        
+        /* Ekstil Alanlar */
+        .privacy-layer {
+            left: 5%; 
+            width: 40%;
+            /* Masaüstü ayarları korunur */
+            padding: 30px 20px;
+            text-align: left; 
+        }
+        
+        /* Vizyon/Misyon Açıklamaları Rengi (Sabitlendi) */
+        .about-layer ul span {
+            color: #cbd5e1 !important; 
+        }
+        
+        /* Mahremiyet Bilgi Kartı Rengi (Sabitlendi) */
+        .privacy-layer .contact-info .info-text strong,
+        .privacy-layer .contact-info .info-text span {
+             color: #cbd5e1 !important;
+        }
+
+    </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Ömer Faruk Durmuş</h1>
-    <h2>Full Stack Developer & Tasarım Meraklısı 💻</h2>
-    <p>
-      Merhaba! Ben Ömer, modern web teknolojileriyle ilgilenen, kullanıcı deneyimine önem veren bir geliştiriciyim.  
-      Kod yazarken sade, hızlı ve estetik çözümler üretmeyi seviyorum. 🚀
-    </p>
-
-    <div class="buttons">
-      <a href="mailto:omer@example.com">📧 Mail Gönder</a>
-      <a href="https://github.com/omerdrmsx" target="_blank">💻 GitHub</a>
-      <a href="https://www.linkedin.com/in/omerfarukdurmus" target="_blank">🔗 LinkedIn</a>
+    <!-- BAŞARI MODALI (SUCCESS MODAL) -->
+    <div id="success-modal">
+        <div class="modal-content">
+             <svg class="modal-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check-circle"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>
+            <h3 data-key="modal_title">Talebiniz Alındı!</h3>
+            <p data-key="modal_message">Teklif talebiniz başarıyla ekibimize iletilmiştir. En kısa sürede size geri dönüş yapılacaktır.</p>
+            <button onclick="closeSuccessModal()" data-key="modal_close">Kapat</button>
+        </div>
     </div>
 
-    <footer>© 2025 Ömer Faruk Durmuş | Tüm hakları saklıdır.</footer>
-  </div>
+    <!-- SABİT BAŞLIK VE LOGO ÇUBUĞU (Her zaman görünür) -->
+    <header id="logo-header-bar">
+        <!-- GÖREV 1: HAMBURGER MENÜ BUTONU (Sadece Mobil) -->
+        <button id="menu-toggle" onclick="toggleMobileMenu()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-menu"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
+        </button>
+        
+        <!-- Tıkladığınızda Ana Sayfaya dönme işlevi -->
+        <a href="#" id="logo-link" class="logo-wrapper" onclick="closeViews(); return false;">
+            <!-- 1. GÖREV: Logoyu dosya konumundan al -->
+            <img id="main-logo" src="logo.png" alt="Vesmar Logo" onerror="this.onerror=null; this.src='https://placehold.co/50x50/0f172a/38bdf8?text=VESMAR'">
+            <span class="highlight-text" style="font-size:1.5rem; font-weight:800; text-shadow:none;">VESMAR</span>
+        </a>
+        
+        <!-- NAVİGASYON (Masaüstü için) -->
+        <nav id="main-nav">
+            <a href="#" data-view="intro" onclick="closeViews(); return false;" data-key="nav_home">Ana Sayfa</a>
+            <a href="#" data-view="services" onclick="openServices(); return false;" data-key="nav_services">Hizmetler</a>
+            <a href="#" data-view="contact" onclick="openContact(); return false;" data-key="nav_contact">İletişim</a>
+            <a href="#" data-view="about" onclick="openAbout(); return false;" data-key="nav_about">Biz Kimiz</a>
+        </nav>
+
+        
+        <!-- DİL SEÇİCİ -->
+        <div id="language-selector">
+            <button id="lang-tr" onclick="setLanguage('tr')" data-lang="tr">TR</button>
+            <button id="lang-en" onclick="setLanguage('en')" data-lang="en">EN</button>
+        </div>
+    </header>
+
+    <!-- GÖREV 1: MOBİL NAVİGASYON MENÜSÜ -->
+    <div id="mobile-nav-menu">
+         <a href="#" data-view="intro" onclick="closeViewsAndMenu(); return false;" data-key="nav_home">Ana Sayfa</a>
+         <a href="#" data-view="services" onclick="openServicesAndMenuClose(); return false;" data-key="nav_services">Hizmetler</a>
+         <a href="#" data-view="contact" onclick="openContactAndMenuClose(); return false;" data-key="nav_contact">İletişim</a>
+         <a href="#" data-view="about" onclick="openAboutAndMenuClose(); return false;" data-key="nav_about">Biz Kimiz</a>
+    </div>
+
+    <section id="globe-section">
+        <!-- Canvas Container for Three.js rendering -->
+        <div id="canvas-container"></div>
+
+        <!-- Slide Navigation Dots (Artık Mobilde Gizli) -->
+        <div class="slide-nav">
+            <div class="nav-dot active" data-view="intro" id="nav-dot-1" onclick="closeViews()"></div>
+            <div class="nav-dot" data-view="services" id="nav-dot-2" onclick="openServices()"></div>
+            <div class="nav-dot" data-view="contact" id="nav-dot-3" onclick="openContact()"></div>
+            <div class="nav-dot" data-view="about" id="nav-dot-4" onclick="openAbout()"></div>
+        </div>
+
+        <!-- UI Content Layers -->
+        <div class="ui-container">
+            <!-- Dynamic Tooltip for Ports -->
+            <div id="port-tooltip" class="port-tooltip"></div>
+
+            <!-- 1. Intro/Hero Layer (ANA SAYFA) -->
+            <div class="content-layer intro-layer" id="intro-layer">
+                <!-- Kuruluş yılı 2014 -->
+                <div class="brand-badge" data-key="est_year">EST. 2014</div>
+                <h2 class="globe-title">
+                    VESMAR
+                    <span class="highlight-text">SHIP SUPPLY</span>
+                </h2>
+                <!-- Motto ve Misyon -->
+                <p class="globe-subtitle" data-key="main_slogan">Güven, deneyim ve çözüm ilkesiyle tüm Türk limanlarında kesintisiz denizcilik çözümleri.</p>
+                <div class="hero-btn-wrapper">
+                    <button onclick="openServices()" class="hero-btn" data-key="btn_explore">
+                        Hizmetleri İncele
+                        <!-- Arrow icon from Lucide (pre-added SVG path) -->
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M17.25 8.25L21 12m0 0l-3.75 3.75M21 12H3" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Scroll Indicator -->
+            <div class="scroll-indicator">
+                <div class="mouse-icon">
+                    <div class="wheel"></div>
+                </div>
+                <div class="scroll-text" data-key="scroll_text">KAYDIR</div>
+            </div>
+
+            <!-- Stats Bar -->
+            <div class="stats-bar">
+                <div class="stat-item">
+                    <span class="stat-value">50+</span>
+                    <span class="stat-label" data-key="stat_ports">LİMAN</span>
+                </div >
+                <div class="stat-item">
+                    <span class="stat-value">7/24</span>
+                    <span class="stat-label" data-key="stat_support">DESTEK</span>
+                </div >
+                <div class="stat-item">
+                    <span class="stat-value">2014</span>
+                    <span class="stat-label" data-key="stat_year">KURULUŞ YILI</span>
+                </div>
+            </div>
+
+            <!-- 2. Services Layer (HİZMETLER SAYFASI) -->
+            <div class="content-layer services-layer">
+                <h2 class="globe-title" style="font-size: 3rem; margin-bottom: 30px;">
+                    VESMAR
+                    <span class="highlight-text">SHIP SUPPLY</span>
+                </h2>
+                <h2 class="services-title" data-key="services_title">TEMEL DENİZCİLİK ÇÖZÜMLERİ</h2>
+                <p class="services-desc" data-key="services_desc">
+                    2014'ten beri tecrübemizle, gemilerinizin ihtiyacı olan kumanya, teknik malzeme, yedek parça ve lojistik desteği tüm Türk limanlarında 7/24 sağlıyoruz. Güven, hız ve kalite bizim rotamızdır.
+                </p>
+                
+                <div class="service-grid">
+                    
+                    <!-- Hizmet 1: LOJİSTİK VE TESLİMAT -->
+                    <div class="service-item-container" onclick="toggleService(this)">
+                        <div class="service-item" data-key="service1_title">
+                            LOJİSTİK VE TESLİMAT
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-down"><path d="m6 9 6 6 6-6"/></svg>
+                        </div>
+                        <div class="service-details">
+                            <p data-key="service1_details">Geminiz için tedarik edilen tüm malzemelerin, zamanında ve hasarsız bir şekilde, belirlenen liman veya demirleme sahasına ulaştırılmasını sağlıyoruz. Türkiye içindeki her noktaya özel araçlarımızla hızlı ve güvenli teslimat yapmaktayız.</p>
+                        </div>
+                    </div>
+
+                    <!-- Hizmet 2: KUMANYA VE KABİN TEDARİĞİ -->
+                    <div class="service-item-container" onclick="toggleService(this)">
+                        <div class="service-item" data-key="service2_title">
+                            KUMANYA VE KABİN TEDARİĞİ
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-down"><path d="m6 9 6 6 6-6"/></svg>
+                        </div>
+                        <div class="service-details">
+                            <p data-key="service2_details">Mürettebatın tüm beslenme ihtiyaçları (taze, kuru, dondurulmuş kumanya) uluslararası hijyen standartlarında temin edilir. Kabin malzemeleri, temizlik ürünleri ve ofis sarf malzemeleri de titizlikle tedarik edilmektedir.</p>
+                        </div>
+                    </div>
+
+                    <!-- Hizmet 3: TEKNİK MALZEME VE YEDEK PARÇA -->
+                    <div class="service-item-container" onclick="toggleService(this)">
+                        <div class="service-item" data-key="service3_title">
+                            TEKNİK MALZEME VE YEDEK PARÇA
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-down"><path d="m6 9 6 6 6-6"/></svg>
+                        </div>
+                        <div class="service-details">
+                            <p data-key="service3_details">Makine dairesi, güverte, elektrik ve elektronik ekipmanlar için gerekli her türlü teknik yedek parça ve malzeme tedariği. Sektördeki geniş ağımız sayesinde nadir bulunan parçalar bile hızlıca bulunur ve gemiye ulaştırılır.</p>
+                        </div>
+                    </div>
+
+                    <!-- Hizmet 4: GÜVENLİK VE BAKIM ÇÖZÜMLERİ -->
+                    <div class="service-item-container" onclick="toggleService(this)">
+                        <div class="service-item" data-key="service4_title">
+                            GÜVENLİK VE BAKIM ÇÖZÜMLERİ
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-down"><path d="m6 9 6 6 6-6"/></svg>
+                        </div>
+                        <div class="service-details">
+                            <p data-key="service4_details">Yangın söndürme ekipmanları, ilk yardım kitleri, can yelekleri gibi zorunlu güvenlik malzemeleri ile birlikte, geminin uzun ömürlü olması için gerekli olan boya, halat, temizlik kimyasalları ve bakım ürünlerinin tedariği.</p>
+                        </div>
+                    </div>
+
+                </div>
+                
+                <!-- Resim Galerisi Alanı (1. GÖREV: resim yolları) -->
+                <div class="services-gallery">
+                    <img src="resim1.jpg" alt="Lojistik ve Tedarik Görseli" onerror="this.onerror=null; this.src='https://placehold.co/400x200/0f172a/94a3b8?text=RESIM1.JPG+BULUNAMADI'">
+                    <img src="resim2.png" alt="Teknik Malzeme Görseli" onerror="this.onerror=null; this.src='https://placehold.co/400x200/0f172a/94a3b8?text=RESIM2.PNG+BULUNAMADI'">
+                </div>
+                
+                <!-- Buton Grubu -->
+                <div class="btn-group" style="display: flex; gap: 15px; flex-wrap: wrap; justify-content: start; margin-top: 30px;">
+                    <!-- Teklif Alın butonu güncellendi -->
+                    <button onclick="openContact()" class="hero-btn" data-key="btn_get_quote">
+                        TEKLİF ALIN
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+                        </svg>
+                    </button>
+                    <button onclick="closeViews()" class="hero-btn back-btn" data-key="btn_back">
+                        GERİ DÖN
+                    </button>
+                </div>
+            </div>
+
+             <!-- 3. Contact Layer (İLETİŞİM SAYFASI) -->
+            <div class="content-layer contact-layer">
+                <h2 class="globe-title" style="font-size: 3rem; margin-bottom: 30px;">
+                    VESMAR
+                    <span class="highlight-text">SHIP SUPPLY</span>
+                </h2>
+                <h2 class="services-title" data-key="contact_title">BİZE ULAŞIN</h2>
+                <p class="services-desc" data-key="contact_desc">
+                    İhtiyaç duyduğunuz tedarik veya lojistik çözümleri için formu doldurarak veya aşağıdaki iletişim kanallarını kullanarak ekibimize 7/24 ulaşabilirsiniz.
+                </p>
+                
+                <!-- İletişim Bilgileri ve Formu Yan Yana Koyan Kapsayıcı -->
+                <div class="contact-grid-wrapper">
+                    <!-- SOL KUTUCUK: İletişim Bilgileri -->
+                    <div class="contact-info-box">
+                        <h3 class="services-title" style="font-size: 1.8rem; margin-bottom: 20px; text-transform: uppercase;" data-key="contact_channels_title">İletişim Kanalları</h3>
+                        
+                        <div class="contact-info" style="margin-bottom: 0;">
+                            <!-- E-POSTA KARTI (DEAKTİF EDİLDİ) -->
+                            <div class="contact-card deactivated-card">
+                                <span style="display: flex; align-items: center; gap: 15px; padding: 12px; width: 100%;">
+                                    <!-- E-POSTA LOGO -->
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-mail"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                                    <div class="info-text">
+                                        <strong data-key="contact_email_title">E-POSTA</strong>
+                                        <span>info@vesmarshipsupply.com</span>
+                                    </div>
+                                </span>
+                            </div>
+                            <!-- ADRES KARTI (Tıklanabilir ve Yeni Sekmede Google Haritalar Açılır) -->
+                            <div class="contact-card">
+                                <a href="https://www.google.com/maps/search/?api=1&query=Evliya+%C3%87elebi,+Ulukent+Sokak+no+3%2F4,+Tuzla%2F%C4%B0stanbul,+T%C3%BCrkiye" target="_blank">
+                                    <!-- ADRES LOGO -->
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-map-pin"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                                    <div class="info-text">
+                                        <strong data-key="contact_address_title">ADRES</strong>
+                                        <span>Evliya Çelebi, Ulukent Sokak no 3/4, Tuzla/İstanbul, Türkiye</span>
+                                    </div>
+                                </a>
+                            </div>
+                            <!-- WHATSAPP KARTI (Tıklanabilir ve Yeni Sekmede WhatsApp Açılır) -->
+                             <div class="contact-card">
+                                <a href="https://wa.me/905334078953" target="_blank">
+                                    <!-- WHATSAPP HATTI LOGO -->
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-phone-call"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.63A2 2 0 0 1 3.08 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/><path d="M18.5 5.5a2.12 2.12 0 0 0-3-3m-1.5 5a2.12 2.12 0 0 0 3 3"/></svg>
+                                    <div class="info-text">
+                                        <strong data-key="contact_whatsapp_title">WHATSAPP HATTI</strong>
+                                        <span>+90-5334078953 / +90-5532639313</span>
+                                    </div>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- SAĞ KUTUCUK: İletişim Formu -->
+                    <form id="quote-form" class="contact-form">
+                        <h3 class="services-title" style="font-size: 1.8rem; margin-bottom: 20px; text-transform: uppercase; color: #fff; text-align: left;">
+                             <span data-key="form_title">Teklif Talebi</span>
+                        </h3>
+                        <div class="form-grid">
+                            <input type="text" placeholder="Adınız Soyadınız" data-key="form_name" name="name" required>
+                            <input type="email" placeholder="E-posta Adresiniz" data-key="form_email" name="email" required>
+                        </div>
+                        <!-- Kalan alanlar tam genişlikte kaldı -->
+                        <input type="text" placeholder="Gemi Adı veya Liman" data-key="form_vessel" name="vessel" required>
+                        <textarea placeholder="Detaylı Talebiniz (Örn: Kumanya, Yedek Parça vb.)" data-key="form_details" name="details" required></textarea>
+                    
+                        <div class="btn-group" style="display: flex; gap: 15px; flex-wrap: wrap; justify-content: start; margin-top: 25px;">
+                            <button type="submit" class="hero-btn" data-key="btn_send">
+                                TALEBİ GÖNDER
+                            </button>
+                            <button type="button" onclick="closeViews()" class="hero-btn back-btn" data-key="btn_back_contact">
+                                GERİ DÖN
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- YENİ LAYER: About View (BİZ KİMİZ SAYFASI) -->
+            <div class="content-layer about-layer">
+                <h2 class="globe-title" style="font-size: 3rem; margin-bottom: 30px;">
+                    VESMAR
+                    <span class="highlight-text">HİKAYESİ</span>
+                </h2>
+                <h2 class="services-title" data-key="about_title">BİZ KİMİZ?</h2>
+                <p class="services-desc" data-key="about_desc_1">
+                    Vesmar Ship Supply, 2014 yılında İstanbul'da kurulmuş olup, denizcilik sektörüne kesintisiz ve güvenilir tedarik çözümleri sunma misyonuyla yola çıkmıştır. Kuruluşumuzdan bu yana temel ilkelerimiz; hız, güvenilirlik ve müşteri odaklı çözümler olmuştur. Türkiye'nin tüm liman ve boğaz geçiş noktalarında gemilerin ihtiyaç duyduğu her türlü kumanya, teknik malzeme ve lojistik desteği 7/24 sağlıyoruz.
+                </p>
+                <h3 class="services-title" style="font-size: 1.8rem; margin-top: 40px;" data-key="about_vision_title">Vizyonumuz ve Misyonumuz</h3>
+                <ul style="list-style: none; padding-left: 0; text-align: left; margin-top: 20px;">
+                    <li style="margin-bottom: 15px;">
+                        <strong style="color: #38bdf8; display: block;">Vizyon:</strong> 
+                        <!-- GÖREV 1: Açıklama rengi #cbd5e1 olarak ayarlandı -->
+                        <span data-key="about_vision">Bölgesel denizcilik tedarik zincirinde teknoloji ve insan kaynağını birleştirerek lider konuma yükselmek.</span>
+                    </li>
+                    <li style="margin-bottom: 15px;">
+                        <strong style="color: #38bdf8; display: block;">Misyon:</strong> 
+                        <!-- GÖREV 1: Açıklama rengi #cbd5e1 olarak ayarlandı -->
+                        <span data-key="about_mission">Denizci müşterilerimizin operasyonel verimliliğini artırmak amacıyla, en yüksek kalite standartlarında, zamanında ve şeffaf hizmet sunmaktır.</span>
+                    </li>
+                </ul>
+                <div class="btn-group" style="display: flex; gap: 15px; flex-wrap: wrap; justify-content: start; margin-top: 30px;">
+                    <button onclick="openContact()" class="hero-btn" data-key="btn_get_quote">
+                        HEMEN TEKLİF ALIN
+                    </button>
+                    <button onclick="closeViews()" class="hero-btn back-btn" data-key="btn_back_about">
+                        GERİ DÖN
+                    </button>
+                </div>
+            </div>
+
+            <!-- 4. GÖREV: YENİ LAYER: Terms of Service View (HİZMET ŞARTLARI SAYFASI) - SAĞDA -->
+            <div class="content-layer terms-layer">
+                <h2 class="globe-title" style="font-size: 3rem; margin-bottom: 30px;">
+                    VESMAR
+                    <span class="highlight-text" data-key="terms_header_highlight">HİZMET ŞARTLARI</span>
+                </h2>
+                <h2 class="services-title" data-key="terms_title">HİZMET ŞARTLARI</h2>
+                <p class="services-desc" data-key="terms_intro">
+                    Bu belge, Vesmar Ship Supply (VES-MAR) tarafından sunulan tüm hizmet ve ürün tedarik süreçlerini yöneten yasal çerçeveyi tanımlar. Hizmetlerimizi kullanmadan önce lütfen şartları dikkatlice okuyunuz.
+                </p>
+                <div style="color: #cbd5e1; text-align: left; padding: 0 10px; margin-top: 30px;">
+                    <h4 style="color: #38bdf8; margin-top: 15px; font-size: 1.1rem;" data-key="terms_section1_title">1. Tedarik Kapsamı ve Fiyatlandırma</h4>
+                    <p data-key="terms_section1_content" style="margin-top: 8px; margin-bottom: 15px;">Tedarik edilen tüm ürünler ve hizmetler, müşterinin talebi üzerine hazırlanan ve karşılıklı teyit edilen proforma fatura/teklif fiyatları üzerinden ücretlendirilir. Fiyatlar, teslimat anındaki güncel döviz kurları ve pazar koşullarına bağlı olarak değişiklik gösterebilir.</p>
+                    
+                    <h4 style="color: #38bdf8; margin-top: 15px; font-size: 1.1rem;" data-key="terms_section2_title">2. Teslimat ve Lojistik Sorumluluğu</h4>
+                    <p data-key="terms_section2_content" style="margin-top: 8px; margin-bottom: 15px;">VES-MAR, ürünlerin gemiye güvenli ve zamanında teslimatından sorumludur. Teslimatın gerçekleşememesi (hava koşulları, liman kısıtlamaları vb.) durumunda müşteri derhal bilgilendirilir ve alternatif çözüm üretilir.</p>
+
+                    <h4 style="color: #38bdf8; margin-top: 15px; font-size: 1.1rem;" data-key="terms_section3_title">3. İptal ve İade Şartları</h4>
+                    <p data-key="terms_section3_content" style="margin-top: 8px; margin-bottom: 15px;">Özel sipariş edilen veya taze gıda niteliğindeki kumanyaların iptali, siparişin onaylanmasından sonra kabul edilmeyebilir. Teknik malzemelerde iade şartları, tedarikçi firmanın garanti ve iade koşullarına tabidir.</p>
+                </div>
+
+                <div class="btn-group" style="display: flex; gap: 15px; flex-wrap: wrap; justify-content: start; margin-top: 30px;">
+                    <button onclick="closeViews()" class="hero-btn back-btn" data-key="btn_back_terms">
+                        ANA SAYFAYA DÖN
+                    </button>
+                </div>
+            </div>
+
+            <!-- 5. GÖREV: YENİ LAYER: Privacy View (MAHREMİYET SAYFASI) - SOLDA -->
+            <div class="content-layer privacy-layer">
+                <h2 class="globe-title" style="font-size: 3rem; margin-bottom: 30px;">
+                    VESMAR
+                    <span class="highlight-text" data-key="privacy_header_highlight">GİZLİLİK POLİTİKASI</span>
+                </h2>
+                <h2 class="services-title" data-key="privacy_title">MAHREMİYET POLİTİKASI</h2>
+                <p class="services-desc" data-key="privacy_intro">
+                    VES-MAR olarak, müşterilerimizin ve iş ortaklarımızın kişisel verilerinin korunmasına büyük önem veriyoruz. Bu politika, hangi verileri topladığımızı ve bunları nasıl kullandığımızı açıklar.
+                </p>
+
+                <!-- MOBİL YENİ TASARIM İÇİN HTML YAPISI (Kutucuklar kaldırıldı, direkt liste yapısı) -->
+                <div class="contact-info" style="margin-bottom: 30px;">
+                    
+                    <!-- KİŞİSEL VERİLERİN TOPLANMASI (ESKİ contact-card) -->
+                    <div class="privacy-section">
+                        <strong data-key="privacy_data_title">Kişisel Verilerin Toplanması</strong>
+                        <p data-key="privacy_data_content">İsim, e-posta, şirket adı ve telefon numarası gibi sipariş ve faturalama için gerekli veriler toplanır.</p>
+                    </div>
+
+                    <!-- VERİ KULLANIM AMAÇLARI (ESKİ contact-card) -->
+                    <div class="privacy-section">
+                        <strong data-key="privacy_usage_title">Veri Kullanım Amaçları</strong>
+                        <p data-key="privacy_usage_content">Veriler yalnızca siparişin yerine getirilmesi, faturalandırma ve müşteri iletişimi için kullanılır. Üçüncü taraflarla paylaşılmaz.</p>
+                    </div>
+
+                </div>
+
+                <div class="btn-group" style="display: flex; gap: 15px; flex-wrap: wrap; justify-content: start; margin-top: 30px;">
+                    <button onclick="closeViews()" class="hero-btn back-btn" data-key="btn_back_privacy">
+                        ANA SAYFAYA DÖN
+                    </button>
+                </div>
+            </div>
+
+            <!-- 6. GÖREV: YENİ LAYER: Accessibility View (ERİŞİLEBİLİRLİK SAYFASI) - SAĞDA -->
+            <div class="content-layer accessibility-layer">
+                <h2 class="globe-title" style="font-size: 3rem; margin-bottom: 30px;">
+                    VESMAR
+                    <span class="highlight-text" data-key="accessibility_header_highlight">ERİŞİLEBİLİRLİK</span>
+                </h2>
+                <h2 class="services-title" data-key="accessibility_title">ERİŞİLEBİLİRLİK</h2>
+                <p class="services-desc" data-key="accessibility_intro">
+                    VES-MAR, web sitesinin ve hizmetlerinin herkes tarafından erişilebilir olmasını sağlamayı taahhüt eder. Web içeriği erişilebilirlik standartlarına (WCAG) uygunluk için çaba gösteriyoruz.
+                </p>
+                
+                <!-- Erişilebilirlik zaten istenen yatayda geniş tasarımı kullanıyordu, sadece mobil için CSS'ini iyileştiriyoruz. -->
+                <div style="color: #cbd5e1; text-align: left; padding: 0 10px; margin-top: 30px;">
+                    <h4 style="color: #38bdf8; margin-top: 15px; font-size: 1.1rem;" data-key="accessibility_section1_title">1. Ekran Okuyucu Uyumluluğu</h4>
+                    <p data-key="accessibility_section1_content" style="margin-top: 8px; margin-bottom: 15px;">Sitemizdeki tüm görseller, bağlantılar ve form öğeleri, ekran okuyucu kullanıcıları için anlamlı metinlerle (alt metinler, aria etiketleri) tasarlanmıştır.</p>
+                    
+                    <h4 style="color: #38bdf8; margin-top: 15px; font-size: 1.1rem;" data-key="accessibility_section2_title">2. Klavye ile Gezinme</h4>
+                    <p data-key="terms_section2_content" style="margin-top: 8px; margin-bottom: 15px;">Site navigasyonu ve interaktif bileşenler, fare kullanılamayan kullanıcılar için klavye tabanlı gezinmeyi destekleyecek şekilde sekme sırasına göre optimize edilmiştir.</p>
+
+                    <h4 style="color: #38bdf8; margin-top: 15px; font-size: 1.1rem;" data-key="accessibility_section3_title">3. Renk Kontrastı</h4>
+                    <p data-key="accessibility_section3_content" style="margin-top: 8px; margin-bottom: 15px;">Tasarımımız, görme engelli veya renk körü kullanıcıların metinleri kolayca okuyabilmesi için yeterli renk kontrast oranlarını korur.</p>
+                </div>
+
+                <div class="btn-group" style="display: flex; gap: 15px; flex-wrap: wrap; justify-content: start; margin-top: 30px;">
+                    <button onclick="closeViews()" class="hero-btn back-btn" data-key="btn_back_accessibility">
+                        ANA SAYFAYA DÖN
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer id="main-footer">
+        <div class="footer-content">
+            <div class="footer-copyright" data-key="footer_copyright">Telif Hakkı © 2024 Tüm hakları saklıdır - VES-MAR</div>
+            <div class="footer-links">
+                <a href="#" onclick="openTerms(); return false;" data-key="footer_terms">HİZMET ŞARTLARI</a> | 
+                <a href="#" onclick="openPrivacy(); return false;" data-key="footer_privacy">MAHREMİYET</a> | 
+                <a href="#" onclick="openAccessibility(); return false;" data-key="footer_accessibility" style="text-transform: uppercase;">ERİŞİLEBİLİRLİK</a>
+                 | 
+                <!-- YENİ GÖREV: Instagram Butonu -->
+                <a href="https://www.instagram.com/vesmarshipsupply/" target="_blank" style="margin-left: 0;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="instagram-icon"><rect width="20" height="20" x="2" y="2" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.5" y1="6.5" y2="6.5"/></svg>
+                </a>
+            </div>
+        </div>
+    </footer>
+
+
+    <script>
+    /**
+     * DİL DESTEĞİ (i18n)
+     */
+    const translations = {
+        'tr': {
+            // NAVİGASYON
+            nav_home: 'ANA SAYFA',
+            nav_services: 'HİZMETLER',
+            nav_contact: 'İLETİŞİM',
+            nav_about: 'BİZ KİMİZ',
+            
+            // GENEL
+            page_title: 'Vesmar Ship Supply - İnteraktif Küre',
+            est_year: 'EST. 2014',
+            stat_ports: 'LİMAN',
+            stat_support: 'DESTEK',
+            stat_year: 'KURULUŞ YILI',
+            scroll_text: 'KAYDIR',
+            btn_explore: 'Hizmetleri İncele',
+            btn_back: 'GERİ DÖN',
+            btn_get_quote: 'TEKLİF ALIN',
+            modal_title: 'Talebiniz Alındı!',
+            modal_message: 'Teklif talebiniz başarıyla ekibimize iletilmiştir. En kısa sürede size geri dönüş yapılacaktır.',
+            modal_close: 'Kapat',
+            
+            // ANA SAYFA
+            main_slogan: 'Güven, deneyim ve çözüm ilkesiyle tüm Türk limanlarında kesintisiz denizcilik çözümleri.',
+
+            // HİZMETLER SAYFASI
+            services_title: 'TEMEL DENİZCİLİK ÇÖZÜMLERİ',
+            services_desc: '2014\'ten beri tecrübemizle, gemilerinizin ihtiyacı olan kumanya, teknik malzeme, yedek parça ve lojistik desteği tüm Türk limanlarında 7/24 sağlıyoruz. Güven, hız ve kalite bizim rotamızdır.',
+            service1_title: 'LOJİSTİK VE TESLİMAT',
+            service1_details: 'Geminiz için tedarik edilen tüm malzemelerin, zamanında ve hasarsız bir şekilde, belirlenen liman veya demirleme sahasına ulaştırılmasını sağlıyoruz. Türkiye içindeki her noktaya özel araçlarımızla hızlı ve güvenli teslimat yapmaktayız.',
+            service2_title: 'KUMANYA VE KABİN TEDARİĞİ',
+            service2_details: 'Mürettebatın tüm beslenme ihtiyaçları (taze, kuru, dondurulmuş kumanya) uluslararası hijyen standartlarında temin edilir. Kabin malzemeleri, temizlik ürünleri ve ofis sarf malzemeleri de titizlikle tedarik edilmektedir.',
+            service3_title: 'TEKNİK MALZEME VE YEDEK PARÇA',
+            service3_details: 'Makine dairesi, güverte, elektrik ve elektronik ekipmanlar için gerekli her türlü teknik yedek parça ve malzeme tedariği. Sektördeki geniş ağımız sayesinde nadir bulunan parçalar bile hızlıca bulunur ve gemiye ulaştırılır.',
+            service4_title: 'GÜVENLİK VE BAKIM ÇÖZÜMLERİ',
+            service4_details: 'Yangın söndürme ekipmanları, ilk yardım kitleri, can yelekleri gibi zorunlu güvenlik malzemeleri ile birlikte, geminin uzun ömürlü olması için gerekli olan boya, halat, temizlik kimyasalları ve bakım ürünlerinin tedariği.',
+
+            // İLETİŞİM SAYFASI
+            contact_title: 'BİZE ULAŞIN',
+            contact_desc: 'İhtiyaç duyduğunuz tedarik veya lojistik çözümleri için formu doldurarak veya aşağıdaki iletişim kanallarını kullanarak ekibimize 7/24 ulaşabilirsiniz.',
+            contact_email_title: 'E-POSTA',
+            contact_address_title: 'ADRES',
+            contact_whatsapp_title: 'WHATSAPP HATTI',
+            contact_channels_title: 'İLETİŞİM KANALLARI',
+            form_title: 'TEKLİF TALEBİ',
+
+            // BİZ KİMİZ SAYFASI (YENİ)
+            about_title: 'BİZ KİMİZ?',
+            about_desc_1: 'Vesmar Ship Supply, 2014 yılında İstanbul\'da kurulmuş olup, denizcilik sektörüne kesintisiz ve güvenilir tedarik çözümleri sunma misyonuyla yola çıkmıştır. Kuruluşumuzdan bu yana temel ilkelerimiz; hız, güvenilirlik ve müşteri odaklı çözümler olmuştur. Türkiye\'nin tüm liman ve boğaz geçiş noktalarında gemilerin ihtiyaç duyduğu her türlü kumanya, teknik malzeme ve lojistik desteği 7/24 sağlıyoruz.',
+            about_vision_title: 'Vizyonumuz ve Misyonumuz',
+            about_vision: 'Bölgesel denizcilik tedarik zincirinde teknoloji ve insan kaynağını birleştirerek lider konuma yükselmek.',
+            about_mission: 'Denizci müşterilerimizin operasyonel verimliliğini artırmak amacıyla, en yüksek kalite standartlarında, zamanında ve şeffaf hizmet sunmaktır.',
+            btn_back_about: 'GERİ DÖN',
+            
+            // YENİ FOOTER SAYFALARI
+            terms_header_highlight: 'HİZMET ŞARTLARI',
+            terms_title: 'HİZMET ŞARTLARI',
+            terms_intro: 'Bu belge, Vesmar Ship Supply (VES-MAR) tarafından sunulan tüm hizmet ve ürün tedarik süreçlerini yöneten yasal çerçeveyi tanımlar. Hizmetlerimizi kullanmadan önce lütfen şartları dikkatlice okuyunuz.',
+            terms_section1_title: '1. Tedarik Kapsamı ve Fiyatlandırma',
+            terms_section1_content: 'Tedarik edilen tüm ürünler ve hizmetler, müşterinin talebi üzerine hazırlanan ve karşılıklı teyit edilen proforma fatura/teklif fiyatları üzerinden ücretlendirilir. Fiyatlar, teslimat anındaki güncel döviz kurları ve pazar koşullarına bağlı olarak değişiklik gösterebilir.',
+            terms_section2_title: '2. Teslimat ve Lojistik Sorumluluğu',
+            terms_section2_content: 'VES-MAR, ürünlerin gemiye güvenli ve zamanında teslimatından sorumludur. Teslimatın gerçekleşememesi (hava koşulları, liman kısıtlamaları vb.) durumunda müşteri derhal bilgilendirilir ve alternatif çözüm üretilir.',
+            terms_section3_title: '3. İptal ve İade Şartları',
+            terms_section3_content: 'Özel sipariş edilen veya taze gıda niteliğindeki kumanyaların iptali, siparişin onaylanmasından sonra kabul edilmeyebilir. Teknik malzemelerde iade şartları, tedarikçi firmanın garanti ve iade koşullarına tabidir.',
+            btn_back_terms: 'ANA SAYFAYA DÖN',
+
+            privacy_header_highlight: 'GİZLİLİK POLİTİKASI',
+            privacy_title: 'MAHREMİYET POLİTİKASI',
+            privacy_intro: 'VES-MAR olarak, müşterilerimizin ve iş ortaklarımızın kişisel verilerinin korunmasına büyük önem veriyoruz. Bu politika, hangi verileri topladığımızı ve bunları nasıl kullandığımızı açıklar.',
+            privacy_data_title: 'Kişisel Verilerin Toplanması',
+            privacy_data_content: 'İsim, e-posta, şirket adı ve telefon numarası gibi sipariş ve faturalama için gerekli veriler toplanır.',
+            privacy_usage_title: 'Veri Kullanım Amaçları',
+            privacy_usage_content: 'Veriler yalnızca siparişin yerine getirilmesi, faturalandırma ve müşteri iletişimi için kullanılır. Üçüncü taraflarla paylaşılmaz.',
+            btn_back_privacy: 'ANA SAYFAYA DÖN',
+
+            accessibility_header_highlight: 'ERİŞİLEBİLİRLİK',
+            accessibility_title: 'ERİŞİLEBİLİRLİK',
+            accessibility_intro: 'VES-MAR, web sitesinin ve hizmetlerinin herkes tarafından erişilebilir olmasını sağlamayı taahhüt eder. Web içeriği erişilebilirlik standartlarına (WCAG) uygunluk için çaba gösteriyoruz.',
+            accessibility_section1_title: '1. Ekran Okuyucu Uyumluluğu',
+            accessibility_section1_content: 'Sitemizdeki tüm görseller, bağlantılar ve form öğeleri, ekran okuyucu kullanıcıları için anlamlı metinlerle (alt metinler, aria etiketleri) tasarlanmıştır.',
+            accessibility_section2_title: '2. Klavye ile Gezinme',
+            accessibility_section2_content: 'Site navigasyonu ve interaktif bileşenler, fare kullanılamayan kullanıcılar için klavye tabanlı gezinmeyi destekleyecek şekilde sekme sırasına göre optimize edilmiştir.',
+            accessibility_section3_title: '3. Renk Kontrastı',
+            accessibility_section3_content: 'Tasarımımız, görme engelli veya renk körü kullanıcıların metinleri kolayca okuyabilmesi için yeterli renk kontrast oranlarını korur.',
+            btn_back_accessibility: 'ANA SAYFAYA DÖN',
+
+            // FOOTER
+            footer_copyright: 'Telif Hakkı © 2024 Tüm hakları saklıdır - VES-MAR',
+            footer_terms: 'HİZMET ŞARTLARI',
+            footer_privacy: 'MAHREMİYET',
+            footer_accessibility: 'ERİŞİLEBİLİRLİK',
+
+            // FORM YER TUTUCULARI
+            form_name: 'Adınız Soyadınız',
+            form_email: 'E-posta Adresiniz',
+            form_vessel: 'Gemi Adı veya Liman',
+            form_details: 'Detaylı Talebiniz (Örn: Kumanya, Yedek Parça vb.)',
+            btn_send: 'TALEBİ GÖNDER',
+            btn_back_contact: 'GERİ DÖN',
+        },
+        'en': {
+             // NAVİGASYON
+            nav_home: 'HOME',
+            nav_services: 'SERVICES',
+            nav_contact: 'CONTACT',
+            nav_about: 'ABOUT US',
+            
+             // GENEL
+            page_title: 'Vesmar Ship Supply - Interactive Globe',
+            est_year: 'EST. 2014',
+            stat_ports: 'PORTS',
+            stat_support: 'SUPPORT',
+            stat_year: 'EST. YEAR',
+            scroll_text: 'SCROLL',
+            btn_explore: 'Explore Services',
+            btn_back: 'GO BACK',
+            btn_get_quote: 'GET A QUOTE',
+            modal_title: 'Request Received!',
+            modal_message: 'Your quote request has been successfully submitted to our team. We will get back to you shortly.',
+            modal_close: 'Close',
+            
+            // ANA SAYFA
+            main_slogan: 'Reliable maritime solutions and seamless supply chain management across all Turkish ports, built on trust and experience.',
+
+            // HİZMETLER SAYFASI
+            services_title: 'CORE MARITIME SOLUTIONS',
+            services_desc: 'Since 2014, our experienced team provides 24/7 provisioning, technical stores, spare parts, and logistics support to your vessels in all Turkish ports. Trust, speed, and quality are our compass.',
+            service1_title: 'LOGISTICS & DELIVERY',
+            service1_details: 'Ensuring timely and damage-free delivery of all supplies to your vessel at the designated port or anchorage. We use dedicated vehicles for fast and secure deliveries across Turkey.',
+            service2_title: 'PROVISION & CABIN SUPPLY',
+            service2_details: 'All crew provisioning needs (fresh, dry, frozen) are sourced according to international hygiene standards. Cabin stores, cleaning products, and office supplies are also meticulously provided.',
+            service3_title: 'TECHNICAL STORES & SPARE PARTS',
+            service3_details: 'Supply of all technical spare parts and materials required for engine room, deck, electrical, and electronic equipment. Our extensive network quickly finds and delivers even hard-to-find parts.',
+            service4_title: 'SAFETY & MAINTENANCE SOLUTIONS',
+            service4_details: 'Supply of mandatory safety equipment like fire fighting gear, first aid kits, life vests, along with maintenance products such as paint, rope, cleaning chemicals necessary for vessel longevity.',
+
+            // İLETİŞİM SAYFASI
+            contact_title: 'CONTACT US',
+            contact_desc: 'For the supply or logistics solutions you need, please fill out the form or use the contact channels below to reach our team 24/7.',
+            contact_email_title: 'EMAIL',
+            contact_address_title: 'ADDRESS',
+            contact_whatsapp_title: 'WHATSAPP LINE',
+            contact_channels_title: 'CONTACT CHANNELS',
+            form_title: 'QUOTE REQUEST',
+            
+            // BİZ KİMİZ SAYFASI (YENİ)
+            about_title: 'ABOUT US',
+            about_desc_1: 'Vesmar Ship Supply was established in Istanbul in 2014 with the mission of providing seamless and reliable supply solutions to the maritime industry. Since our establishment, our core principles have been speed, reliability, and customer-focused solutions. We provide 24/7 provisioning, technical stores, spare parts, and logistics support to vessels at all ports and straits passage points in Turkey.',
+            about_vision_title: 'Vision and Mission',
+            about_vision: 'To become a leading player in the regional maritime supply chain by integrating technology and human resources.',
+            about_mission: 'To provide timely and transparent service at the highest quality standards to increase the operational efficiency of our maritime clients.',
+            btn_back_about: 'GO BACK',
+            
+            // YENİ FOOTER SAYFALARI
+            terms_header_highlight: 'TERMS OF SERVICE',
+            terms_title: 'TERMS OF SERVICE',
+            terms_intro: 'This document defines the legal framework governing all services and product supply processes offered by Vesmar Ship Supply (VES-MAR). Please read the terms carefully before using our services.',
+            terms_section1_title: '1. Scope of Supply and Pricing',
+            terms_section1_content: 'All products and services supplied are charged based on the proforma invoice/quote prices prepared upon customer request and mutually confirmed. Prices may vary based on current exchange rates and market conditions at the time of delivery.',
+            terms_section2_title: '2. Delivery and Logistics Responsibility',
+            terms_section2_content: 'VES-MAR is responsible for the safe and timely delivery of products to the vessel. If delivery cannot be completed (due to weather, port restrictions, etc.), the customer will be immediately notified and an alternative solution will be provided.',
+            terms_section3_title: '3. Cancellation and Return Conditions',
+            terms_section3_content: 'Cancellations for specially ordered or fresh food provisions may not be accepted after order confirmation. Technical materials are subject to the warranty and return terms of the supplier company.',
+            btn_back_terms: 'GO BACK HOME',
+
+            privacy_header_highlight: 'PRIVACY POLICY',
+            privacy_title: 'PRIVACY POLICY',
+            privacy_intro: 'At VES-MAR, we prioritize the protection of personal data belonging to our customers and business partners. This policy explains what data we collect and how we use it.',
+            privacy_data_title: 'Collection of Personal Data',
+            privacy_data_content: 'Data necessary for ordering and invoicing, such as name, email, company name, and phone number, is collected.',
+            privacy_usage_title: 'Data Usage Purposes',
+            privacy_usage_content: 'Data is used solely for the fulfillment of orders, invoicing, and customer communication. It is not shared with third parties.',
+            btn_back_privacy: 'GO BACK HOME',
+
+            accessibility_header_highlight: 'ACCESSIBILITY',
+            accessibility_title: 'ACCESSIBILITY',
+            accessibility_intro: 'VES-MAR is committed to ensuring that its website and services are accessible to everyone. We strive for compliance with Web Content Accessibility Guidelines (WCAG).',
+            accessibility_section1_title: '1. Screen Reader Compatibility',
+            accessibility_section1_content: 'Sitemizdeki tüm görseller, bağlantılar ve form öğeleri, ekran okuyucu kullanıcıları için anlamlı metinlerle (alt metinler, aria etiketleri) tasarlanmıştır.',
+            accessibility_section2_title: '2. Keyboard Navigation',
+            accessibility_section2_content: 'Site navigasyonu ve interaktif bileşenler, fare kullanılamayan kullanıcılar için klavye tabanlı gezinmeyi destekleyecek şekilde sekme sırasına göre optimize edilmiştir.',
+            accessibility_section3_title: '3. Renk Kontrastı',
+            accessibility_section3_content: 'Tasarımımız, görme engelli veya renk körü kullanıcıların metinleri kolayca okuyabilmesi için yeterli renk kontrast oranlarını korur.',
+            btn_back_accessibility: 'GO BACK HOME',
+
+            // FOOTER
+            footer_copyright: 'Copyright © 2024 All rights reserved - VES-MAR',
+            footer_terms: 'TERMS OF SERVICE',
+            footer_privacy: 'PRIVACY',
+            footer_accessibility: 'Accessibility',
+
+            // FORM YER TUTUCULARI
+            form_name: 'Full Name',
+            form_email: 'Email Address',
+            form_vessel: 'Vessel Name or Port',
+            form_details: 'Detailed Request (e.g., Provisions, Spare Parts, etc.)',
+            btn_send: 'SEND REQUEST',
+            btn_back_contact: 'GO BACK',
+        }
+    };
+
+    let currentLang = 'tr'; // Default language
+
+    function setLanguage(lang) {
+        currentLang = lang;
+        // localStorage.setItem('lang', lang); // Use localStorage if running outside the sandbox
+        updateContent();
+        document.querySelectorAll('#language-selector button').forEach(button => {
+            button.classList.remove('active');
+        });
+        document.getElementById(`lang-${lang}`).classList.add('active');
+    }
+
+    function updateContent() {
+        const langData = translations[currentLang];
+        
+        // Update document title
+        const titleElement = document.querySelector('title');
+        if (titleElement) {
+            titleElement.textContent = langData.page_title;
+        }
+
+        // Update regular text content using data-key
+        document.querySelectorAll('[data-key]').forEach(element => {
+            const key = element.getAttribute('data-key');
+            // Metin içeriğini sadece belirli tagler için güncelle
+            if (langData[key] && element.tagName !== 'INPUT' && element.tagName !== 'TEXTAREA') {
+                element.textContent = langData[key];
+            }
+        });
+        
+        // Update placeholder text for form fields
+        document.querySelectorAll('.contact-form [data-key]').forEach(input => {
+            const key = input.getAttribute('data-key');
+            if (langData[key]) {
+                 if (input.tagName === 'INPUT' || input.tagName === 'TEXTAREA') {
+                    input.placeholder = langData[key];
+                }
+            }
+        });
+
+        // Update Modal content
+        const modalTitle = document.querySelector('#success-modal h3');
+        const modalMessage = document.querySelector('#success-modal p');
+        const modalClose = document.querySelector('#success-modal button');
+        
+        if (modalTitle) modalTitle.textContent = langData.modal_title;
+        if (modalMessage) modalMessage.textContent = langData.modal_message;
+        if (modalClose) modalClose.textContent = langData.modal_close;
+        
+        // Update Nav Link texts and manage active state
+        document.querySelectorAll('#main-nav a').forEach(link => {
+            const key = link.getAttribute('data-key');
+            if (langData[key]) {
+                link.textContent = langData[key];
+            }
+        });
+        
+        // Update Footer Link texts
+        document.querySelectorAll('.footer-links a').forEach(link => {
+            const key = link.getAttribute('data-key');
+            // Instagram ikonu metin içermediği için atlandı
+            if (langData[key] && link.id !== 'instagram-footer-link') { 
+                 link.textContent = langData[key];
+            }
+        });
+
+        updateNavActiveState();
+    }
+
+    /**
+     * UI State Management Functions
+     */
+    const globeSection = document.getElementById('globe-section');
+    const navDots = document.querySelectorAll('.nav-dot');
+    const navLinks = document.querySelectorAll('#main-nav a');
+    
+    function updateActiveElements(activeView) {
+        // Update Nav Dots
+        navDots.forEach(dot => {
+            dot.classList.remove('active');
+            if (dot.getAttribute('data-view') === activeView) {
+                dot.classList.add('active');
+            }
+        });
+        // Update Nav Links (Masaüstü Nav)
+        navLinks.forEach(link => {
+            link.classList.remove('active-link');
+            if (link.getAttribute('data-view') === activeView) {
+                link.classList.add('active-link');
+            }
+        });
+         // Update Mobile Menu Links
+         document.querySelectorAll('#mobile-nav-menu a').forEach(link => {
+            link.classList.remove('active-link');
+            if (link.getAttribute('data-view') === activeView) {
+                link.classList.add('active-link');
+            }
+        });
+    }
+
+    function updateNavActiveState() {
+        if (globeSection.classList.contains('mode-services')) {
+            updateActiveElements('services');
+        } else if (globeSection.classList.contains('mode-contact')) {
+            updateActiveElements('contact');
+        } else if (globeSection.classList.contains('mode-about')) {
+            updateActiveElements('about');
+        } else if (globeSection.classList.contains('mode-terms')) {
+            updateActiveElements('terms');
+        } else if (globeSection.classList.contains('mode-privacy')) {
+            updateActiveElements('privacy');
+        } else if (globeSection.classList.contains('mode-accessibility')) {
+            updateActiveElements('accessibility');
+        } else {
+            updateActiveElements('intro');
+        }
+    }
+
+    function removeAllModes() {
+        globeSection.classList.remove('mode-services', 'mode-contact', 'mode-about', 'mode-terms', 'mode-privacy', 'mode-accessibility');
+    }
+
+    function openServices() {
+        removeAllModes();
+        globeSection.classList.add('mode-services');
+        updateActiveElements('services');
+        updateContent(); 
+    }
+
+    function openAbout() {
+        removeAllModes();
+        globeSection.classList.add('mode-about');
+        updateActiveElements('about');
+        updateContent(); 
+    }
+
+    function openContact() {
+        removeAllModes();
+        globeSection.classList.add('mode-contact');
+        updateActiveElements('contact');
+        updateContent(); 
+    }
+    
+    function closeViews() {
+        removeAllModes();
+        updateActiveElements('intro');
+        updateContent(); 
+    }
+    
+    // Yasal Sayfa Açma Fonksiyonları
+    function openTerms() {
+        removeAllModes();
+        globeSection.classList.add('mode-terms');
+        updateActiveElements('terms');
+        updateContent(); 
+    }
+
+    function openPrivacy() {
+        removeAllModes();
+        globeSection.classList.add('mode-privacy');
+        updateActiveElements('privacy');
+        updateContent(); 
+    }
+
+    function openAccessibility() {
+        removeAllModes();
+        globeSection.classList.add('mode-accessibility');
+        updateActiveElements('accessibility');
+        updateContent(); 
+    }
+
+    function showSuccessModal() {
+        const modal = document.getElementById('success-modal');
+        modal.classList.add('visible');
+    }
+
+    function closeSuccessModal() {
+        const modal = document.getElementById('success-modal');
+        modal.classList.remove('visible');
+    }
+
+    // Form Gönderme İşlevi
+    document.addEventListener('submit', function(e) {
+        if (e.target && e.target.id === 'quote-form') {
+            e.preventDefault(); 
+
+            // Eğer form geçerliyse, yani required alanlar doluysa
+            if (e.target.checkValidity()) {
+                 // ** Burada Asenkron Veri Gönderimi yapılır **
+                
+                e.target.reset(); // Formu temizle
+                closeViews(); // Ana sayfaya dön
+                showSuccessModal(); // Başarı modalını göster
+            } else {
+                // HTML5 varsayılan doğrulama hataları gösterilecektir.
+            }
+        }
+    });
+
+    // ACCORDION FUNCTIONALITY
+    function toggleService(container) {
+        const allContainers = document.querySelectorAll('.service-item-container');
+        const wasActive = container.classList.contains('active');
+
+        // Close all containers
+        allContainers.forEach(c => {
+            c.classList.remove('active');
+        });
+
+        // Open the clicked container only if it was NOT previously active
+        if (!wasActive) {
+            container.classList.add('active');
+        }
+    }
+    
+    // --- GÖREV 1: MOBİL MENÜ MANTIKLARI ---
+    const mobileMenu = document.getElementById('mobile-nav-menu');
+    function toggleMobileMenu() {
+        mobileMenu.classList.toggle('open');
+    }
+
+    function closeMobileMenu() {
+        mobileMenu.classList.remove('open');
+    }
+    
+    // Menüyü kapatıp Ana Sayfaya git
+    function closeViewsAndMenu() {
+        closeViews();
+        closeMobileMenu();
+    }
+    
+    // Menüyü kapatıp Hizmetler sayfasına git
+    function openServicesAndMenuClose() {
+        openServices();
+        closeMobileMenu();
+    }
+    
+    // Menüyü kapatıp İletişim sayfasına git
+    function openContactAndMenuClose() {
+        openContact();
+        closeMobileMenu();
+    }
+
+    // Menüyü kapatıp Biz Kimiz sayfasına git
+    function openAboutAndMenuClose() {
+        openAbout();
+        closeMobileMenu();
+    }
+    
+    // --- Three.js Globe Initialization and Animation ---
+    let isDragging = false;
+    let mouseX = 0;
+    let mouseY = 0;
+    let lastClientX = 0;
+    let lastClientY = 0;
+    let windowHalfX = window.innerWidth / 2;
+    let windowHalfY = window.innerHeight / 2;
+    
+    const ports = [
+        { name: "İstanbul", lat: 41.0082, lon: 28.9784 },
+        { name: "İzmir", lat: 38.4192, lon: 27.1287 },
+        { name: "Mersin", lat: 36.8124, lon: 34.6415 },
+        { name: "İskenderun", lat: 36.5927, lon: 36.1667 },
+        { name: "Derince/İzmit", lat: 40.7588, lon: 29.8700 },
+        { name: "Antalya", lat: 36.8848, lon: 30.7040 },
+        { name: "Samsun", lat: 41.2833, lon: 36.3333 },
+        { name: "Bodrum", lat: 37.0343, lon: 27.4217 },
+        { name: "Çanakkale", lat: 40.1472, lon: 26.4082 },
+        { name: "Trabzon", lat: 41.0082, lon: 39.7167 },
+    ];
+
+    // Kıta/Ülke hatlarını temsil eden Lat/Lon noktaları (Örnek coğrafi ağ)
+    const continentLinesData = [
+        // Avrupa Ana Hatları (Kaba)
+        [51.5, 0, 48.8, 2.3], // İngiltere-Fransa
+        [48.8, 2.3, 40.7, 14.2], // Fransa-İtalya
+        [40.7, 14.2, 41.2, 28.9], // İtalya-İstanbul (Akdeniz-Ege)
+        // Türkiye ve Çevresi
+        [41.0, 28.9, 39.0, 35.0], // Türkiye'nin ana ekseni
+        [39.0, 35.0, 36.0, 36.0], // Güneydoğu
+        [36.0, 36.0, 36.5, 34.5], // Akdeniz sahil hattı
+        [41.2, 36.3, 41.0, 39.7], // Karadeniz sahil hattı
+        // Afrika Kısa Hatları
+        [30, -9, 20, 15], 
+        [20, 15, 0, 30],
+        // Asya'nın bir kısmı
+        [40, 60, 40, 90],
+        // Amerika Kıtası (Kaba)
+        [40, -100, 30, -100],
+    ];
+
+    let shootingStarMaterials = []; // Global hale getirildi
+    const globeRadius = 6; // Global hale getirildi
+
+
+    function latLonToVec3(lat, lon, radius) {
+        const latRad = lat * (Math.PI / 180);
+        const lonRad = -lon * (Math.PI / 180);
+        const x = radius * Math.cos(latRad) * Math.cos(lonRad);
+        const y = radius * Math.sin(latRad);
+        const z = radius * Math.cos(latRad) * Math.sin(lonRad);
+        return new THREE.Vector3(x, y, z);
+    }
+
+    function createShootingStarTexture() {
+        const canvas = document.createElement('canvas');
+        canvas.width = 128;
+        canvas.height = 32;
+        const context = canvas.getContext('2d');
+        const gradient = context.createLinearGradient(0, 0, 128, 0);
+        gradient.addColorStop(0.0, 'rgba(0,0,0,0)');
+        gradient.addColorStop(0.3, 'rgba(14, 165, 233, 0.1)'); 
+        gradient.addColorStop(0.7, 'rgba(34, 211, 238, 1)'); 
+        gradient.addColorStop(0.95, 'rgba(255, 255, 255, 1)'); 
+        gradient.addColorStop(1.0, 'rgba(0,0,0,0)');
+        context.fillStyle = gradient;
+        context.fillRect(0, 0, 128, 32);
+        return new THREE.CanvasTexture(canvas);
+    }
+
+    /**
+     * Kıtaların/Ağların Hatlarını Çizen Fonksiyon
+     */
+    function createContinentOutlines() {
+        const outlinePoints = [];
+        const radius = globeRadius + 0.05; // Yüzeyin hemen üzerinde
+
+        continentLinesData.forEach(([lat1, lon1, lat2, lon2]) => {
+            const p1 = latLonToVec3(lat1, lon1, radius);
+            const p2 = latLonToVec3(lat2, lon2, radius);
+            
+            // Küresel bir yay (arc) oluştur
+            const mid = p1.clone().add(p2).multiplyScalar(0.5).normalize().multiplyScalar(radius + 0.3);
+            const curve = new THREE.QuadraticBezierCurve3(p1, mid, p2);
+            
+            const points = curve.getPoints(50); // 50 segment
+            points.forEach(p => {
+                outlinePoints.push(p.x, p.y, p.z);
+            });
+        });
+
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(outlinePoints, 3));
+
+        const material = new THREE.LineBasicMaterial({ 
+            color: 0x38bdf8, // Tema rengi
+            transparent: true, 
+            opacity: 0.6,
+        });
+        
+        return new THREE.Line(geometry, material); 
+    }
+
+
+    function initRobustGlobe() {
+        const container = document.getElementById('canvas-container');
+        if (!container) return;
+        if (container.querySelector('canvas')) container.innerHTML = ''; // Reinit safety
+
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x000000, 0.02);
+
+        // Setup Camera
+        const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+        const updateCameraZ = () => {
+             camera.position.z = window.innerWidth < 768 ? 35 : 22;
+        };
+        updateCameraZ();
+
+        // Setup Renderer
+        const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        container.appendChild(renderer.domElement);
+        
+        // Responsive Resize Logic (simplified for brevity)
+        window.addEventListener('resize', () => {
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+            updateCameraZ();
+            windowHalfX = window.innerWidth / 2;
+            windowHalfY = window.innerHeight / 2;
+        });
+
+        const tiltGroup = new THREE.Group();
+        tiltGroup.rotation.z = 0; 
+        scene.add(tiltGroup);
+
+        const mainGroup = new THREE.Group();
+        tiltGroup.add(mainGroup);
+
+        // 1. Globe Wireframe
+        const geometry = new THREE.IcosahedronGeometry(globeRadius, 3);
+        const wireframeMaterial = new THREE.MeshBasicMaterial({ color: 0x0ea5e9, wireframe: true, transparent: true, opacity: 0.15 });
+        const globeWireframe = new THREE.Mesh(geometry, wireframeMaterial);
+        mainGroup.add(globeWireframe);
+
+        // 2. Globe Points (Vertex dots)
+        const pointsMaterial = new THREE.PointsMaterial({ color: 0xbae6fd, size: 0.08, transparent: true, opacity: 0.6 });
+        const globePoints = new THREE.Points(geometry, pointsMaterial);
+        mainGroup.add(globePoints);
+
+        // 3. Globe Core (Black interior)
+        const coreGeo = new THREE.SphereGeometry(globeRadius * 0.99, 64, 64);
+        const coreMat = new THREE.MeshBasicMaterial({ color: 0x000000 }); 
+        const core = new THREE.Mesh(coreGeo, coreMat);
+        mainGroup.add(core);
+
+        // 4. Continent Outlines (Yeni eklenen Hatlar)
+        const continentOutlineLines = createContinentOutlines();
+        mainGroup.add(continentOutlineLines);
+        
+        // 5. Animated Routes (Shooting Stars)
+        const routesGroup = new THREE.Group();
+        mainGroup.add(routesGroup);
+        const starTexture = createShootingStarTexture();
+        shootingStarMaterials = []; // Yeniden başlatılıyor
+
+        function createShootingStarRoute(p1, p2) {
+            const v1 = new THREE.Vector3(p1.x, p1.y, p1.z);
+            const v2 = new THREE.Vector3(p2.x, p2.y, p2.z);
+            const distance = v1.distanceTo(v2);
+
+            const mid = v1.clone().add(v2).multiplyScalar(0.5).normalize().multiplyScalar(globeRadius + distance * 0.5);
+            const curve = new THREE.QuadraticBezierCurve3(p1, mid, p2);
+            
+            const tubeGeo = new THREE.TubeGeometry(curve, 40, 0.012, 8, false);
+            const tubeMat = new THREE.MeshBasicMaterial({
+                map: starTexture, 
+                transparent: true, opacity: 1, 
+                blending: THREE.AdditiveBlending, 
+                side: THREE.DoubleSide, depthWrite: false
+            });
+            
+            tubeMat.userData = { 
+                speed: 0.003 + Math.random() * 0.005, 
+                offset: Math.random() 
+            };
+            tubeMat.map = starTexture.clone(); 
+            tubeMat.map.wrapS = THREE.RepeatWrapping;
+            
+            const mesh = new THREE.Mesh(tubeGeo, tubeMat);
+            routesGroup.add(mesh);
+            shootingStarMaterials.push(tubeMat);
+        }
+
+        const vertices = geometry.attributes.position;
+        for (let i = 0; i < 18; i++) { 
+            const idx1 = Math.floor(Math.random() * vertices.count);
+            const idx2 = Math.floor(Math.random() * vertices.count);
+            const p1 = { x: vertices.getX(idx1), y: vertices.getY(idx1), z: vertices.getZ(idx1) };
+            const p2 = { x: vertices.getX(idx2), y: vertices.getY(idx2), z: vertices.getZ(idx2) };
+            
+            const d = Math.sqrt(Math.pow(p1.x-p2.x, 2) + Math.pow(p1.y-p2.y, 2) + Math.pow(p1.z-p2.z, 2));
+            
+            if(d > 4 && d < 9) createShootingStarRoute(p1, p2);
+        }
+
+        // 6. Scanning Ring effect
+        const scanGeo = new THREE.RingGeometry(globeRadius * 1.05, globeRadius * 1.06, 64);
+        const scanMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.5, side: THREE.DoubleSide });
+        const scanRing = new THREE.Mesh(scanGeo, scanMat);
+        scanRing.rotation.x = Math.PI / 2; 
+        tiltGroup.add(scanRing);
+        let scanY = -7;
+        let scanDir = 1;
+
+        // 7. Atmosphere Effect
+        const atmoGeo = new THREE.SphereGeometry(globeRadius * 1.03, 32, 32);
+        const atmoMat = new THREE.MeshBasicMaterial({ color: 0x0ea5e9, transparent: true, opacity: 0.1, side: THREE.BackSide, wireframe: false });
+        const atmosphere = new THREE.Mesh(atmoGeo, atmoMat);
+        mainGroup.add(atmosphere);
+
+        // 8. Orbital Rings & 9. Background Stars
+        const ringGeo = new THREE.TorusGeometry(9, 0.02, 16, 100);
+        const ringMat = new THREE.MeshBasicMaterial({ color: 0x0ea5e9, transparent: true, opacity: 0.3 });
+        
+        const ring1 = new THREE.Mesh(ringGeo, ringMat);
+        ring1.rotation.x = Math.PI / 2; ring1.rotation.y = Math.PI / 8;
+        tiltGroup.add(ring1); 
+        
+        const ring2 = new THREE.Mesh(ringGeo, ringMat);
+        ring2.rotation.x = Math.PI / 1.8; ring2.rotation.y = -Math.PI / 6;
+        tiltGroup.add(ring2);
+
+        const starGeo = new THREE.BufferGeometry();
+        const starCount = 700;
+        const starPos = new Float32Array(starCount * 3);
+        for(let i=0; i<starCount*3; i++) { starPos[i] = (Math.random() - 0.5) * 100; }
+        starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+        const starMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.05, transparent: true, opacity: 0.5 });
+        const stars = new THREE.Points(starGeo, starMat);
+        scene.add(stars);
+
+        // 10. Interactive Port Markers
+        const portMarkersGroup = new THREE.Group();
+        mainGroup.add(portMarkersGroup);
+        
+        const markerGeometry = new THREE.SphereGeometry(0.08, 16, 16);
+        const markerMaterial = new THREE.MeshBasicMaterial({ 
+            color: 0x38bdf8, 
+            blending: THREE.AdditiveBlending, 
+            transparent: true, 
+            depthWrite: false, 
+            opacity: 0.8
+        });
+
+        const ports = [
+            { name: "İstanbul", lat: 41.0082, lon: 28.9784 },
+            { name: "İzmir", lat: 38.4192, lon: 27.1287 },
+            { name: "Mersin", lat: 36.8124, lon: 34.6415 },
+            { name: "İskenderun", lat: 36.5927, lon: 36.1667 },
+            { name: "Derince/İzmit", lat: 40.7588, lon: 29.8700 },
+            { name: "Antalya", lat: 36.8848, lon: 30.7040 },
+            { name: "Samsun", lat: 41.2833, lon: 36.3333 },
+            { name: "Bodrum", lat: 37.0343, lon: 27.4217 },
+            { name: "Çanakkale", lat: 40.1472, lon: 26.4082 },
+            { name: "Trabzon", lat: 41.0082, lon: 39.7167 },
+        ];
+        
+        ports.forEach(port => {
+            const position = latLonToVec3(port.lat, port.lon, globeRadius * 1.01);
+            const marker = new THREE.Mesh(markerGeometry, markerMaterial);
+            marker.position.copy(position);
+            marker.userData.name = port.name; 
+            portMarkersGroup.add(marker);
+        });
+
+
+        // Interaction Setup (Raycasting)
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        let intersectedObject = null;
+        const tooltip = document.getElementById('port-tooltip');
+        const canvasElement = renderer.domElement;
+
+        // Update mouse position for raycasting
+        function onMouseMove(event) {
+            const rect = canvasElement.getBoundingClientRect();
+            mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+        }
+
+        // Mouse Events for Rotation
+        // HATA DÜZELTMESİ: Yerel olarak tanımlandı
+        const globeSectionElLocal = document.getElementById('globe-section'); 
+
+        globeSectionElLocal.addEventListener('mousedown', function(e) {
+            // Prevent dragging if modal is open or content page is active (tüm yeni modlar eklendi)
+            if (globeSection.classList.contains('mode-services') || globeSection.classList.contains('mode-contact') || globeSection.classList.contains('mode-about') || globeSection.classList.contains('mode-terms') || globeSection.classList.contains('mode-privacy') || globeSection.classList.contains('mode-accessibility')) return;
+
+            isDragging = true;
+            lastClientX = e.clientX;
+            lastClientY = e.clientY;
+        });
+        
+        document.addEventListener('mouseup', function() { isDragging = false; });
+        document.addEventListener('mouseleave', function() { isDragging = false; });
+        
+        document.addEventListener('mousemove', function(e) {
+            // Used for subtle camera/star parallax
+            mouseX = (e.clientX - windowHalfX);
+            mouseY = (e.clientY - windowHalfY);
+
+            if (isDragging) {
+                const deltaX = e.clientX - lastClientX;
+                const deltaY = e.clientY - lastClientY;
+
+                mainGroup.rotation.y += deltaX * 0.005;
+                // Limit rotation on X axis
+                mainGroup.rotation.x += deltaY * 0.005;
+
+                lastClientX = e.clientX;
+                lastClientY = e.clientY;
+            }
+        });
+        
+        // Touch Events for Mobile Rotation
+        globeSectionElLocal.addEventListener('touchstart', function(e) {
+            if (globeSection.classList.contains('mode-services') || globeSection.classList.contains('mode-contact') || globeSection.classList.contains('mode-about') || globeSection.classList.contains('mode-terms') || globeSection.classList.contains('mode-privacy') || globeSection.classList.contains('mode-accessibility')) return;
+            if (e.touches.length === 1) {
+                isDragging = true;
+                lastClientX = e.touches[0].clientX;
+                lastClientY = e.touches[0].clientY;
+            }
+        }, {passive: true}); 
+
+        document.addEventListener('touchend', function() { isDragging = false; });
+        
+        document.addEventListener('touchmove', function(e) {
+            if (isDragging && e.touches.length === 1) {
+                // Prevent scrolling while actively rotating the globe
+                e.preventDefault(); 
+                const deltaX = e.touches[0].clientX - lastClientX;
+                const deltaY = e.touches[0].clientY - lastClientY;
+
+                mainGroup.rotation.y += deltaX * 0.005;
+                mainGroup.rotation.x += deltaY * 0.005;
+
+                lastClientX = e.touches[0].clientX;
+                lastClientY = e.touches[0].clientY;
+            }
+        }, {passive: false});
+
+        canvasElement.addEventListener('mousemove', onMouseMove);
+
+        // Initial rotation for a better starting view (focused on Turkey)
+        // Turkey's center is roughly 39N 35E. Rotate Y (longitude) and X (latitude tilt).
+        mainGroup.rotation.y = -35 * (Math.PI / 180); // Rotate to bring 35E to the front
+        mainGroup.rotation.x = -39 * (Math.PI / 180); // Tilt to center 39N
+
+        // Animation Loop
+        function animate() {
+            requestAnimationFrame(animate);
+            const time = Date.now() * 0.001;
+            
+            // GÖREV 2: Sadece sürüklenmiyorsa ve intro modundaysa hızlı dön, diğer modlarda yavaş dön (0.0008)
+            let rotationSpeed = 0;
+            if (!isDragging) {
+                if (!globeSection.classList.contains('mode-services') && !globeSection.classList.contains('mode-contact') && !globeSection.classList.contains('mode-about') && !globeSection.classList.contains('mode-terms') && !globeSection.classList.contains('mode-privacy') && !globeSection.classList.contains('mode-accessibility')) {
+                    rotationSpeed = 0.003; // Intro (Hızlı)
+                } else {
+                    rotationSpeed = 0.0008; // Diğer sayfalar (Çok Yavaş)
+                }
+            }
+
+            mainGroup.rotation.y += rotationSpeed;
+            
+            // Animate routes, rings, atmosphere
+            shootingStarMaterials.forEach(mat => { mat.map.offset.x -= mat.userData.speed; });
+
+            scanY += 0.03 * scanDir;
+            if(scanY > 7) scanDir = -1;
+            if(scanY < -7) scanDir = 1;
+            scanRing.position.y = scanY;
+            const scaleFactor = Math.sqrt(1 - (scanY/6.5)*(scanY/6.5));
+            if (scaleFactor > 0) { scanRing.scale.set(scaleFactor, scaleFactor, 1); }
+
+            const scale = 1 + Math.sin(time * 1.5) * 0.02;
+            atmosphere.scale.set(scale, scale, scale);
+            atmosphere.material.opacity = 0.1 + Math.sin(time * 1.5) * 0.05;
+            
+            ring1.rotation.z += 0.004; 
+            ring1.rotation.x += Math.cos(time) * 0.001; 
+            ring2.rotation.z -= 0.004; 
+            ring2.rotation.y += Math.sin(time) * 0.001;
+            
+            stars.rotation.x += (mouseX * 0.00005 - stars.rotation.x) * 0.05;
+            stars.rotation.y += (mouseY * 0.00005 - stars.rotation.y) * 0.05;
+
+            // Port Marker Interaction Logic
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(portMarkersGroup.children);
+
+            if (intersects.length > 0) {
+                const object = intersects[0].object;
+                if (object !== intersectedObject) {
+                    if(intersectedObject) intersectedObject.material.color.set(0x38bdf8); 
+                    intersectedObject = object;
+                    object.material.color.set(0xffffff); 
+
+                    tooltip.textContent = object.userData.name;
+                    tooltip.classList.add('visible');
+                }
+                
+                // Project 3D position to 2D screen coordinates
+                const vector = new THREE.Vector3();
+                object.updateWorldMatrix(true, false);
+                vector.setFromMatrixPosition(object.matrixWorld);
+                vector.project(camera);
+
+                const x = (vector.x * 0.5 + 0.5) * container.clientWidth;
+                const y = (vector.y * -0.5 + 0.5) * container.clientHeight;
+
+                tooltip.style.left = `${x + container.offsetLeft}px`;
+                tooltip.style.top = `${y + container.offsetTop}px`;
+
+            } else {
+                // No intersection
+                if (intersectedObject) {
+                    intersectedObject.material.color.set(0x38bdf8);
+                    intersectedObject = null;
+                    tooltip.classList.remove('visible');
+                }
+            }
+            
+            // Marker Pulse Animation
+            const pulse = 1 + Math.sin(time * 5) * 0.5;
+            portMarkersGroup.children.forEach(marker => {
+                 marker.scale.set(pulse, pulse, pulse);
+            });
+
+
+            renderer.render(scene, camera);
+        }
+        animate();
+    }
+    
+    // --- Initial Load Logic ---
+    document.addEventListener("DOMContentLoaded", function() {
+        // Dil ayarını kontrol et (Sandbox ortamında localStorage kullanımı önerilmez, varsayılan TR kullanıldı)
+        // const storedLang = localStorage.getItem('lang') || 'tr';
+        setLanguage('tr'); // Default to TR
+
+        // Initialize Three.js when the script is loaded
+        waitForThreeAndInit();
+        
+        // Trigger initial UI animation fade-in
+        setTimeout(() => {
+            const section = document.getElementById('globe-section');
+            if(section) section.classList.add('animate-in');
+        }, 300); 
+    });
+
+    // Simple check to ensure Three.js library is loaded
+    function waitForThreeAndInit() {
+        if (typeof THREE !== 'undefined') {
+            initRobustGlobe();
+        } else {
+            // Retry check if library hasn't loaded yet
+            setTimeout(waitForThreeAndInit, 50);
+        }
+    }
+    </script>
 </body>
 </html>
