@@ -819,8 +819,17 @@
             /* GENEL MOBİL AYARLAR */
             
             /* Başlık Font Boyutları Optimizasyonu */
-            .globe-title { font-size: 2.8rem; margin-top: 50px; } 
-            .services-title { font-size: 2.2rem; }
+            .globe-title { 
+                font-size: 2.8rem; 
+                margin-top: 50px; 
+                /* KRİTİK DÜZELTME: Animasyon sorununu çözmek için transition kaldırıldı */
+                transition: none; 
+            } 
+            .services-title { 
+                font-size: 2.2rem; 
+                /* KRİTİK DÜZELTME: Animasyon sorununu çözmek için transition kaldırıldı */
+                transition: none;
+            }
             .globe-subtitle { font-size: 1rem; }
             
             .hero-btn { padding: 15px 30px; font-size: 1rem; }
@@ -896,6 +905,7 @@
             .terms-layer, 
             .privacy-layer, 
             .accessibility-layer { 
+                 background: none !important;
                 width: 100%; 
                 left: 0;
                 /* İç padding'i artırarak kenarlardan içeri itiyorum */
@@ -909,6 +919,9 @@
                 border-radius: 8px;
                 box-sizing: border-box; /* Padding'in genişliği bozmasını önler */
                 z-index: 30; /* İçeriği Stats Bar'dan ve Footer'dan ÖNE AL */
+                
+                /* KRİTİK: Küçülme sorununu çözmek için transition'ı sadece opacity'e indiriyoruz. */
+                transition: opacity 0.3s ease-out; 
             }
             
             /* KRİTİK DÜZELTME: Küçülme sorununu çözmek için tüm transform'ları scale(1) ile başlattık ve transition'ı kısalttık */
@@ -959,9 +972,7 @@
                  width: 100% !important; 
                  box-shadow: 0 4px 10px rgba(0,0,0,0.5); /* Hafif gölge */
                  
-                 /* KRİTİK DÜZELTME: Kapsayıcıyı esnek yapıyı zorla */
-                 display: flex !important;
-                 align-items: center;
+                
             }
 
             /* KRİTİK DÜZELTME: İç metin alanına esneklik kazandırarak sağa yayılmasını zorla */
@@ -971,11 +982,15 @@
                  text-align: left;
                  user-select: text; 
                  flex-grow: 1; /* Metin bloğunun kalan alanı doldurmasını sağla */
+                 /* KRİTİK: Flickering'i engellemek için transform transition'ı kaldır */
+                 transition: none;
             }
             
             .contact-layer .contact-info strong {
                  font-size: 1.1rem; 
                  color: #fff; /* Başlıkları beyaz yap */
+                 /* KRİTİK: Flickering'i engellemek için transform transition'ı kaldır */
+                 transition: none;
             }
             
             .contact-layer .contact-info span {
@@ -983,6 +998,8 @@
                  line-height: 1.3;
                  color: #cbd5e1; /* Açıklama metnini açık gri yap */
                  word-break: break-word; /* Uzun URL'lerin taşmasını engelle */
+                 /* KRİTİK: Flickering'i engellemek için transform transition'ı kaldır */
+                 transition: none;
             }
             
             /* Inputların Genişlik ve Boşluk Ayarları */
@@ -991,6 +1008,8 @@
                 padding: 12px; /* Daha kolay tıklama */
                 margin-bottom: 0; 
                 width: 100%;
+                /* KRİTİK: Flickering'i engellemek için transform transition'ı kaldır */
+                transition: border-color 0.3s;
             }
             .contact-layer .contact-form {
                  gap: 10px; 
@@ -1022,6 +1041,8 @@
             .privacy-section { /* Yeni eklenen div'e stil ver */
                  border-left: 3px solid #38bdf8;
                  padding-left: 10px;
+                 /* KRİTİK: Flickering'i engellemek için transform transition'ı kaldır */
+                 transition: none;
             }
             
             /* Mahremiyet Başlıklarının Rengini Beyaz Yap */
@@ -2429,12 +2450,37 @@
         animate();
     }
     
+    // JS'te Kopyalama İşlevi (iframe kısıtlamaları nedeniyle document.execCommand kullanıldı)
+    function copyToClipboard(text) {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        document.body.appendChild(textarea);
+        textarea.select();
+        try {
+            document.execCommand('copy');
+            alert('E-posta adresi kopyalandı!'); // Basit bir bildirim
+        } catch (err) {
+            console.error('Kopyalama başarısız:', err);
+        }
+        document.body.removeChild(textarea);
+    }
+
     // --- Initial Load Logic ---
     document.addEventListener("DOMContentLoaded", function() {
         // Dil ayarını kontrol et (Sandbox ortamında localStorage kullanımı önerilmez, varsayılan TR kullanıldı)
         // const storedLang = localStorage.getItem('lang') || 'tr';
         setLanguage('tr'); // Default to TR
 
+        // E-posta Kopyalama Event Listener
+        const emailCard = document.querySelector('.contact-card .email-copy-link');
+        if (emailCard) {
+            emailCard.addEventListener('click', (e) => {
+                e.preventDefault();
+                const email = emailCard.querySelector('.info-text span').textContent;
+                copyToClipboard(email);
+            });
+        }
+        
         // Initialize Three.js when the script is loaded
         waitForThreeAndInit();
         
