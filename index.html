@@ -486,14 +486,14 @@
 
         /* Mumlar ve Alev Animasyonu */
         .candle-wrapper {
-            position: absolute; /* Pasta konteynerine göre konumlandır */
-            top: -50px;
+            position: absolute; 
+            top: 25px; /* Pastayı aşağı çekmek için pozisyonu güncellendi */
             left: 50%;
             transform: translateX(-50%);
             display: flex;
             justify-content: center;
-            gap: 15px; /* Mumlar arası boşluk */
-            z-index: 20; /* Emojinin üstünde olsun */
+            gap: 15px; 
+            z-index: 20; 
         }
 
         .candle-stick {
@@ -508,7 +508,7 @@
             width: 10px;
             height: 40px;
             background-color: #fff;
-            position: relative; /* Alevler için */
+            position: relative; 
             border-radius: 2px;
             box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.2);
         }
@@ -657,7 +657,7 @@
 
     <!-- PASTA Görüntüleme Alanı -->
     <div id="cake-display">
-        <h2 class="text-3xl font-extrabold text-pink-600 mb-4 soft-glow-pink">İyi ki Doğdun İlkim!</h2>
+        <h2 class="text-3xl font-extrabold text-pink-600 mb-8 soft-glow-pink">İyi ki Doğdun İlkim!</h2> <!-- mb-8 eklendi -->
         
         <!-- YENİ PASTA GÖRSELİ (EMOJI) VE MUMLAR -->
         <div id="cake-visual-container" class="relative flex justify-center w-full">
@@ -665,7 +665,7 @@
             <div id="cake-emoji" class="text-[8rem] leading-none mb-4">🎂</div>
             
             <!-- Mumlar (Pasta Emojisi Üzerine Konumlandırıldı) -->
-            <div class="absolute top-[-50px] flex space-x-4">
+            <div class="candle-wrapper">
                 <!-- 3 Mum -->
                 <div class="candle">
                     <div class="flame"></div>
@@ -1069,8 +1069,9 @@
         function blowOutCandles() {
             document.querySelectorAll('.flame').forEach(flame => flame.classList.add('out'));
             
-            // Mumlar sönünce havai fişek şovu başlat
+            // Mumlar sönünce havai fişek ve konfeti şovu başlat
             startFireworkShow();
+            startConfettiBlast(); // KONFETİ EKLENDİ
 
             // Hediye (Buket) görselini göster
             setTimeout(() => {
