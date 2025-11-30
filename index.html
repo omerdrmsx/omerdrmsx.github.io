@@ -178,6 +178,8 @@
             animation-name: heartFall; 
             animation-timing-function: linear;
             animation-fill-mode: forwards;
+            /* Sonsuz döngü */
+            animation-iteration-count: infinite; 
         }
         .heart::before, .heart::after {
             content: "";
@@ -190,8 +192,10 @@
         .heart::before { top: -50%; left: 0; }
         .heart::after { top: 0; left: 50%; }
         @keyframes heartFall {
+            /* Başlangıçta ekranın üstünden başlar (-50vh) */
             0% { transform: translateY(-50vh) rotate(-45deg) scale(1); opacity: 0.8; }
-            100% { transform: translateY(100vh) rotate(360deg) scale(0.5); opacity: 0; }
+            /* Ekranın altına kadar düşer ve tekrar başa döner */
+            100% { transform: translateY(150vh) rotate(360deg) scale(0.5); opacity: 0; } 
         }
 
         /* KONFETİ STİLİ */
@@ -294,23 +298,16 @@
             100% { transform: scale(0.5); opacity: 0; visibility: hidden; }
         }
 
-        /* Metin Yazma Animasyonu */
+        /* Metin Yazma Animasyonu (GENEL) */
         .typing-container {
             display: inline-block;
             overflow: hidden;
             white-space: nowrap;
             width: 0; /* Başlangıçta 0 genişlik */
             border-right: 3px solid rgba(255, 255, 255, 0);
-            animation: 
-                typing 2.0s steps(29, end) forwards,
-                blink-caret 0.75s step-end infinite;
         }
-        .typing-container.active {
-            animation: 
-                typing 2.0s steps(29, end) forwards,
-                blink-caret 0.75s step-end infinite;
-        }
-        @keyframes typing {
+        /* Yeni, daha akıcı animasyon tanımı */
+        @keyframes typing-smooth {
             from { width: 0; }
             to { width: 100%; }
         }
@@ -487,7 +484,8 @@
         /* Mumlar ve Alev Animasyonu */
         .candle-wrapper {
             position: absolute; 
-            top: 25px; /* Pastayı aşağı çekmek için pozisyonu güncellendi */
+            /* Pasta emojisinin üzerine tam oturması için ayarlandı */
+            top: 15px; 
             left: 50%;
             transform: translateX(-50%);
             display: flex;
@@ -496,14 +494,12 @@
             z-index: 20; 
         }
 
-        .candle-stick {
-            display: flex;
-            justify-content: center;
-            height: 50px;
-            margin-bottom: 5px;
-            z-index: 10;
+        /* Pasta Boyutu Artırıldı */
+        #cake-emoji {
+             font-size: 10rem; 
+             margin-bottom: 50px; /* Pasta ile butonlar arasında boşluk bırakmak için */
         }
-
+        
         .candle {
             width: 10px;
             height: 40px;
@@ -511,6 +507,7 @@
             position: relative; 
             border-radius: 2px;
             box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.2);
+            z-index: 10;
         }
 
         .flame {
@@ -523,7 +520,7 @@
             border-radius: 50%;
             box-shadow: 0 0 5px #ffcc00, 0 0 10px #ffa500;
             animation: flicker 0.2s infinite alternate;
-            transition: opacity 0.5s ease-out;
+            transition: opacity 1.5s ease-out; /* Sönme süresi artırıldı */
             opacity: 1;
         }
 
@@ -639,7 +636,7 @@
         
         <img id="photo" 
              src="[BURAYA KENDİ FOTOĞRAF ADINIZI YAZIN.jpg]" 
-             onerror="this.onerror=null; this.src='https://placehold.co/400x300/e91e63/ffffff?text=FOTOĞRAF+YOK!%0ALütfen+Dosya+Adını+Değiştirin!';" 
+             onerror="this.onerror=null; this.src='https://placehold.co/400x300/e91e63/ffffff?text=Fotoğraf+yok.+Görmek+için+lütfen+bir+fotoğraf+yükleyin!';" 
              alt="Sevgilinizle Olan Fotoğrafınız"
              class="rounded-lg shadow-lg mt-4 w-full h-auto max-h-[300px] shadow-xl">
         
@@ -656,16 +653,16 @@
     </div>
 
     <!-- PASTA Görüntüleme Alanı -->
-    <div id="cake-display">
-        <h2 class="text-3xl font-extrabold text-pink-600 mb-8 soft-glow-pink">İyi ki Doğdun İlkim!</h2> <!-- mb-8 eklendi -->
+    <div id="cake-display" class="pt-10"> <!-- İçerik Kartından daha aşağı çekmek için üst boşluk artırıldı -->
+        <h2 class="text-3xl font-extrabold text-pink-600 mb-8 soft-glow-pink">İyi ki Doğdun İlkim!</h2> 
         
         <!-- YENİ PASTA GÖRSELİ (EMOJI) VE MUMLAR -->
-        <div id="cake-visual-container" class="relative flex justify-center w-full">
+        <div id="cake-visual-container" class="relative flex justify-center w-full mt-10">
             <!-- Pasta Emojisi -->
-            <div id="cake-emoji" class="text-[8rem] leading-none mb-4">🎂</div>
+            <div id="cake-emoji" class="text-[10rem] leading-none mb-4">🎂</div> <!-- Boyut artırıldı -->
             
             <!-- Mumlar (Pasta Emojisi Üzerine Konumlandırıldı) -->
-            <div class="candle-wrapper">
+            <div class="candle-wrapper" style="top: 0px;"> 
                 <!-- 3 Mum -->
                 <div class="candle">
                     <div class="flame"></div>
@@ -741,6 +738,7 @@
 
         let cameraMessageElement;
         let isGiftOpened = false;
+        let isHeartShowerActive = false; // Kalp döngüsü kontrolü
 
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('giftBox').style.opacity = '0';
@@ -756,6 +754,9 @@
             cakeBtn.disabled = true;
             cakeBtn.classList.add('cursor-not-allowed', 'opacity-50');
             cakeBtn.classList.remove('hover:bg-pink-600');
+            
+            // Sayfa yüklenince sürekli kalp yağmurunu başlat
+            startHeartShower();
         });
 
         // Hediye kutusunu açma işlevi
@@ -775,7 +776,7 @@
             // Parlama ve Müzik
             body.classList.add('glow-effect'); 
             playBirthdaySound();
-            startHeartShower(); 
+            
             startConfettiBlast();
             startBalloonFloat();
             startFireworkShow();
@@ -811,25 +812,25 @@
             const ilkimText = document.getElementById('typing-ilkim');
             
             // "İyi ki Doğdun" (13 karakter)
-            line1.style.animation = 'typing 1.0s steps(13, end) forwards, blink-caret 0.75s step-end infinite';
+            line1.style.animation = 'typing-smooth 0.8s linear forwards, blink-caret 0.75s step-end infinite';
             
             // "Sevgilim! ❤️" (10 karakter + emoji)
             setTimeout(() => {
                 line1.style.borderRight = 'none'; 
-                line2.style.animation = 'typing 1.0s steps(10, end) forwards, blink-caret 0.75s step-end infinite';
-            }, 1000); 
+                line2.style.animation = 'typing-smooth 0.7s linear forwards, blink-caret 0.75s step-end infinite';
+            }, 800); 
 
             // "İlkim" ismini yaz
             setTimeout(() => {
                 line2.style.borderRight = 'none';
                 ilkimText.textContent = "İlkim"; // Metni ayarla
-                ilkimText.style.animation = 'typing 0.7s steps(5, end) forwards, blink-caret 0.75s step-end infinite';
-            }, 2000);
+                ilkimText.style.animation = 'typing-smooth 0.5s linear forwards, blink-caret 0.75s step-end infinite';
+            }, 1500); // 0.8s + 0.7s = 1.5s sonra başla
 
             // İlkim yazısı bittikten sonra imleci gizle
             setTimeout(() => {
                 ilkimText.style.borderRight = 'none';
-            }, 2700); 
+            }, 2000); // 1.5s + 0.5s = 2.0s
         }
 
         // Müzik çalma işlevi
@@ -855,6 +856,7 @@
 
         /* --- VİSUAL EFEKTLER (KALP, KONFETİ, BALON, HAVAİ FİŞEK) --- */
 
+        // Sonsuz Kalp Yağmuru
         function createHeart() {
             const heart = document.createElement('div');
             heart.classList.add('heart');
@@ -868,9 +870,17 @@
             const colors = ['#ff4081', '#e91e63', '#f48fb1'];
             heart.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
             document.body.appendChild(heart);
-            heart.addEventListener('animationend', () => { heart.remove(); });
+            // Animasyon bitince kalbi sil ve yenisini oluştur (Sonsuz döngü)
+            heart.addEventListener('animationend', () => { heart.remove(); createHeart(); });
         }
-        function startHeartShower() { for(let i = 0; i < 40; i++) { setTimeout(createHeart, i * 150); } }
+
+        function startHeartShower() { 
+            if (isHeartShowerActive) return;
+            isHeartShowerActive = true;
+            // İlk kalp grubunu başlat
+            for(let i = 0; i < 40; i++) { setTimeout(createHeart, i * 150); } 
+            // Sonraki kalpler animationend event'i ile kendi kendini tetikleyecek
+        }
 
         function createConfetti() {
             const confetti = document.createElement('div');
@@ -890,7 +900,8 @@
             document.body.appendChild(confetti);
             confetti.addEventListener('animationend', () => { confetti.remove(); });
         }
-        function startConfettiBlast() { const numConfetti = 80; for (let i = 0; i < numConfetti; i++) { createConfetti(); } }
+        // Konfeti sayısı 3 katına çıkarıldı
+        function startConfettiBlast() { const numConfetti = 240; for (let i = 0; i < numConfetti; i++) { createConfetti(); } }
 
         function createBalloon() {
             const balloon = document.createElement('div');
@@ -938,7 +949,8 @@
             }
             firework.addEventListener('animationend', () => { firework.remove(); });
         }
-        function startFireworkShow() { for (let i = 0; i < 8; i++) { setTimeout(createFirework, i * 700 + 500); } }
+        // Havai fişek sayısı artırıldı
+        function startFireworkShow() { for (let i = 0; i < 24; i++) { setTimeout(createFirework, i * 250 + 500); } }
 
         /* --- KAMERA SİMÜLASYONU İŞLEVLERİ --- */
 
@@ -951,19 +963,19 @@
             line2.textContent = "Kızı";
             
             // "Dünyanın En Güzel" (18 karakter)
-            line1.style.animation = 'typing 1.0s steps(18, end) forwards, blink-caret 0.75s step-end infinite';
+            line1.style.animation = 'typing-smooth 1.2s linear forwards, blink-caret 0.75s step-end infinite'; 
             
             // İkinci satırı başlatmak için bekle
             setTimeout(() => {
                 line1.style.borderRight = 'none';
                 // "Kızı" (4 karakter)
-                line2.style.animation = 'typing 0.5s steps(4, end) forwards, blink-caret 0.75s step-end infinite';
-            }, 1000); 
+                line2.style.animation = 'typing-smooth 0.4s linear forwards, blink-caret 0.75s step-end infinite';
+            }, 1200); 
 
             // İkinci satır bittikten sonra imleci gizle
             setTimeout(() => {
                 line2.style.borderRight = 'none';
-            }, 1500);
+            }, 1600); 
         }
 
         function startCameraSimulation() {
@@ -1023,8 +1035,8 @@
 
                 // FOTOĞRAF ÇEKİLDİKTEN SONRA RESMİ GÜNCELLE
                 const mainPhoto = document.getElementById('photo');
-                mainPhoto.src = 'dgresim.jpeg'; 
-                mainPhoto.onerror = null; // Hata kontrolünü kaldır
+                mainPhoto.src = 'dgresim.jpeg'; // GitHub'daki dosya adı
+                mainPhoto.onerror = null; 
 
                 // PASTA BUTONUNU AKTİF ET
                 cakeBtn.disabled = false;
@@ -1071,7 +1083,7 @@
             
             // Mumlar sönünce havai fişek ve konfeti şovu başlat
             startFireworkShow();
-            startConfettiBlast(); // KONFETİ EKLENDİ
+            startConfettiBlast(); 
 
             // Hediye (Buket) görselini göster
             setTimeout(() => {
